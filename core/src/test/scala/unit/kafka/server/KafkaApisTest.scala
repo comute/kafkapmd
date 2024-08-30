@@ -11249,7 +11249,7 @@ class KafkaApisTest extends Logging {
     val requestChannelRequest = buildRequest(new StreamsGroupInitializeRequest.Builder(streamsGroupInitializeRequest, true).build())
 
     val future = new CompletableFuture[StreamsGroupInitializeResponseData]()
-    when(groupCoordinator.streamsInitialize(
+    when(groupCoordinator.streamsGroupInitialize(
       requestChannelRequest.context,
       streamsGroupInitializeRequest
     )).thenReturn(future)
@@ -11275,7 +11275,7 @@ class KafkaApisTest extends Logging {
     val requestChannelRequest = buildRequest(new StreamsGroupInitializeRequest.Builder(streamsGroupInitializeRequest, true).build())
 
     val future = new CompletableFuture[StreamsGroupInitializeResponseData]()
-    when(groupCoordinator.streamsInitialize(
+    when(groupCoordinator.streamsGroupInitialize(
       requestChannelRequest.context,
       streamsGroupInitializeRequest
     )).thenReturn(future)
@@ -11322,7 +11322,7 @@ class KafkaApisTest extends Logging {
     val requestChannelRequest = buildRequest(new StreamsGroupHeartbeatRequest.Builder(streamsGroupHeartbeatRequest, true).build())
 
     val future = new CompletableFuture[StreamsGroupHeartbeatResponseData]()
-    when(groupCoordinator.streamsHeartbeat(
+    when(groupCoordinator.streamsGroupHeartbeat(
       requestChannelRequest.context,
       streamsGroupHeartbeatRequest
     )).thenReturn(future)
@@ -11349,7 +11349,7 @@ class KafkaApisTest extends Logging {
     val requestChannelRequest = buildRequest(new StreamsGroupHeartbeatRequest.Builder(streamsGroupHeartbeatRequest, true).build())
 
     val future = new CompletableFuture[StreamsGroupHeartbeatResponseData]()
-    when(groupCoordinator.streamsHeartbeat(
+    when(groupCoordinator.streamsGroupHeartbeat(
       requestChannelRequest.context,
       streamsGroupHeartbeatRequest
     )).thenReturn(future)
