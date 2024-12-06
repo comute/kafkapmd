@@ -2,7 +2,7 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/kafka-logo-readme-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="docs/images/kafka-logo-readme-light.svg">
-  <img alt="Kafka Logo" src="docs/images/kafka-logo-readme-light.svg" width="80"> 
+  <img alt="Kafka Logo" src="docs/images/kafka-logo-readme-light.svg" width="40"> 
 </picture>
 </a> Apache Kafka
 <br><br>
