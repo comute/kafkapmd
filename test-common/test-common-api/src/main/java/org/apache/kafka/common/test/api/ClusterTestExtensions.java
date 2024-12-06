@@ -29,6 +29,9 @@ import org.junit.jupiter.api.extension.TestTemplateInvocationContext;
 import org.junit.jupiter.api.extension.TestTemplateInvocationContextProvider;
 import org.junit.platform.commons.util.ReflectionUtils;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,6 +46,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -152,6 +156,8 @@ public class ClusterTestExtensions implements TestTemplateInvocationContextProvi
 
     @Override
     public void afterEach(ExtensionContext context) {
+        detectDeadlock();
+
         DetectThreadLeak detectThreadLeak = getStore(context).remove(DETECT_THREAD_LEAK_KEY, DetectThreadLeak.class);
         if (detectThreadLeak == null) {
             return;
@@ -159,6 +165,21 @@ public class ClusterTestExtensions implements TestTemplateInvocationContextProvi
         List<Thread> threads = detectThreadLeak.newThreads();
         assertTrue(threads.isEmpty(), "Thread leak detected: " +
                 threads.stream().map(Thread::getName).collect(Collectors.joining(", ")));
+    }
+
+    private void detectDeadlock() {
+        ThreadMXBean bean = ManagementFactory.getThreadMXBean();
+        long[] threadIds = bean.findDeadlockedThreads(); // Returns null if no threads are deadlocked.
+
+        if (threadIds != null) {
+            ThreadInfo[] infos = bean.getThreadInfo(threadIds);
+
+//            for (ThreadInfo info : infos) {
+//                StackTraceElement[] stack = info.getStackTrace();
+//                // Log or store stack trace information.
+//            }
+            assertFalse(Arrays.stream(infos).findAny().isPresent(), "deadlock detected: " + infos);
+        }
     }
 
     private Store getStore(ExtensionContext context) {
