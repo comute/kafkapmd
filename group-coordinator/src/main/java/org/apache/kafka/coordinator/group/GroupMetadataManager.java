@@ -1599,8 +1599,6 @@ public class GroupMetadataManager {
         }
     }
 
-
-
     /**
      * Throws an InvalidRequestException if the value is null or empty.
      *
@@ -1616,7 +1614,6 @@ public class GroupMetadataManager {
             throw new InvalidRequestException(error);
         }
     }
-
 
     /**
      * Validates the request.
