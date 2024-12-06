@@ -93,6 +93,16 @@ public class Assertions {
         }
     }
 
+    /**
+     * Assert that the expected records are equal to the provided records.
+     *
+     * @param expectedRecords   An ordered list of groupings. Each grouping
+     *                          defines a list of records that must be present,
+     *                          but they could be in any order.
+     * @param actualRecords     An ordered list of records.
+     * @throws AssertionFailedError if the expected and the actual records do
+     *                              not match.
+     */
     public static void assertUnorderedRecordsEquals(
         List<List<CoordinatorRecord>> expectedRecords,
         List<CoordinatorRecord> actualRecords
