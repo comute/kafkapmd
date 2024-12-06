@@ -40,7 +40,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -78,18 +77,9 @@ class LocalLogTest {
         } catch (KafkaStorageException kse) {
             // ignore
         }
-        Utils.delete(tmpDir);
-        Utils.delete(logDir);
     }
 
-    static class KeyValue {
-        private final String key;
-        private final String value;
-
-        KeyValue(String key, String value) {
-            this.key = key;
-            this.value = value;
-        }
+    record KeyValue(String key, String value) {
 
         SimpleRecord toRecord(long timestamp) {
             return new SimpleRecord(timestamp, key.getBytes(), value.getBytes());
@@ -107,19 +97,6 @@ class LocalLogTest {
                 ? StandardCharsets.UTF_8.decode(record.value()).toString()
                 : "";
             return new KeyValue(key, value);
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            KeyValue keyValue = (KeyValue) o;
-            return Objects.equals(key, keyValue.key) && Objects.equals(value, keyValue.value);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(key, value);
         }
     }
 
@@ -175,12 +152,6 @@ class LocalLogTest {
                 false,
                 maxOffsetMetadata,
                 false);
-    }
-
-    private static List<Record> mkList(Iterable<Record> iterable) {
-        List<Record> records = new ArrayList<>();
-        iterable.forEach(records::add);
-        return records;
     }
 
     @Test
@@ -284,7 +255,7 @@ class LocalLogTest {
         assertEquals(2L, log.logEndOffset());
         assertEquals(0L, log.recoveryPoint());
         FetchDataInfo fetchDataInfo = readRecords(0L);
-        assertEquals(2L, mkList(fetchDataInfo.records.records()).size());
+        assertEquals(2L, Utils.toList(fetchDataInfo.records.records()).size());
         assertEquals(keyValues, recordsToKvs(fetchDataInfo.records.records()));
     }
 
@@ -456,7 +427,7 @@ class LocalLogTest {
 
         // case-0: valid case, `startOffset` < `maxOffsetMetadata.offset`
         var fetchDataInfo = readRecords(3L, new LogOffsetMetadata(4L, 4L, 0));
-        assertEquals(1, mkList(fetchDataInfo.records.records()).size());
+        assertEquals(1, Utils.toList(fetchDataInfo.records.records()).size());
         assertEquals(new LogOffsetMetadata(3, 2L, 69), fetchDataInfo.fetchOffsetMetadata);
 
         // case-1: `startOffset` == `maxOffsetMetadata.offset`
@@ -501,7 +472,7 @@ class LocalLogTest {
         assertEquals(0L, log.recoveryPoint());
         assertEquals(7L, log.logEndOffset());
         FetchDataInfo fetchDataInfo = readRecords(6L);
-        assertEquals(1, mkList(fetchDataInfo.records.records()).size());
+        assertEquals(1, Utils.toList(fetchDataInfo.records.records()).size());
         assertEquals(List.of(new KeyValue("", "a")), recordsToKvs(fetchDataInfo.records.records()));
 
         // Verify that we can still append to the active segment
@@ -688,7 +659,7 @@ class LocalLogTest {
                 1L);
         assertEquals(2, log.logEndOffset(), "Expect two records in the log");
         FetchDataInfo readResult = readRecords(0L);
-        assertEquals(2L, mkList(readResult.records.records()).size());
+        assertEquals(2L, Utils.toList(readResult.records.records()).size());
         assertEquals(Stream.concat(keyValues1.stream(), keyValues2.stream()).collect(Collectors.toList()), recordsToKvs(readResult.records.records()));
 
         // roll so that active segment is empty
