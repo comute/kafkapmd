@@ -197,6 +197,11 @@ allprojects {
     options.links "https://docs.oracle.com/en/java/javase/${JavaVersion.current().majorVersion}/docs/api/"
   }
 
+  tasks.withType(Checkstyle) {
+    minHeapSize = "50m"
+    maxHeapSize = "100m"
+  }
+
   clean {
     delete "${projectDir}/src/generated"
     delete "${projectDir}/src/generated-test"
