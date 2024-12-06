@@ -446,7 +446,7 @@ public class ConnectorConfig extends AbstractConfig {
     private <T> T getTransformationOrPredicate(Plugins plugins, String classConfig, String versionConfig, Class<T> type) {
         try {
             VersionRange range = PluginVersionUtils.connectorVersionRequirement(getString(versionConfig));
-            return range == null ? Utils.newInstance(getClass(classConfig), type) : (T) plugins.newPlugin(getClass(classConfig).getName(), range);
+            return (T) plugins.newPlugin(getClass(classConfig).getName(), type, range);
         } catch (Exception e) {
             throw new ConnectException(e);
         }
