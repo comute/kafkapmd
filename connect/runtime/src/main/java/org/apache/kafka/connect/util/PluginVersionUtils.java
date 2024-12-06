@@ -1,16 +1,9 @@
 package org.apache.kafka.connect.util;
 
-import org.apache.kafka.connect.runtime.isolation.Plugins;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
 
 public class PluginVersionUtils {
-
-    private static Plugins plugins = null;
-
-    public static void setPlugins(Plugins plugins) {
-        PluginVersionUtils.plugins = plugins;
-    }
 
     public static VersionRange connectorVersionRequirement(String version) throws InvalidVersionSpecificationException {
         if (version == null || version.equals("latest")) {

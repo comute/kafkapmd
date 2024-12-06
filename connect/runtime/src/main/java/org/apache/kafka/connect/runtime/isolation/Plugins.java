@@ -570,7 +570,7 @@ public class Plugins {
             try {
                 range = PluginVersionUtils.connectorVersionRequirement(version);
             } catch (InvalidVersionSpecificationException e) {
-                throw new ConnectException(String.format("Invalid version range for %s: %s %s", classPropertyName, version, e));
+                throw new ConnectException(String.format("Invalid version range for %s: %s", classPropertyName, version), e);
             }
         }
 
@@ -581,8 +581,6 @@ public class Plugins {
         switch (classLoaderUsage) {
             case CURRENT_CLASSLOADER:
                 // Attempt to load first with the current classloader, and plugins as a fallback.
-                // Note: we can't use config.getConfiguredInstance because Converter doesn't implement Configurable, and even if it did
-                // we have to remove the property prefixes before calling config(...) and we still always want to call Converter.config.
                 klass = pluginClassFromConfig(config, classPropertyName, basePluginClass, availablePlugins);
                 break;
             case PLUGINS:
@@ -600,8 +598,8 @@ public class Plugins {
                 break;
         }
         if (klass == null) {
-            throw new ConnectException("Unable to initialize the '" + basePluginClassName
-                    + "' specified in '" + classPropertyName + "'");
+            throw new ConnectException("Unable to initialize the " + basePluginClassName
+                    + " specified in " + classPropertyName);
         }
 
         U plugin;

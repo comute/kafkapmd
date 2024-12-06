@@ -165,13 +165,12 @@ public class DelegatingClassLoader extends URLClassLoader {
             ClassLoader loader = null;
             for (Map.Entry<PluginDesc<?>, ClassLoader> entry : loaders.entrySet()) {
                 // the entries should be in sorted order of versions so this should end up picking the latest version which matches the range
-                if (range.containsVersion(entry.getKey().encodedVersion()) && entry.getValue() instanceof PluginClassLoader) {
-                    version = entry.getKey().encodedVersion();
+                if (range.containsVersion(entry.getKey().encodedVersion())) {
                     loader = entry.getValue();
                 }
             }
 
-            if (version == null) {
+            if (loader == null) {
                 List<String> availableVersions = loaders.keySet().stream().map(PluginDesc::version).collect(Collectors.toList());
                 throw new VersionedPluginLoadingException(String.format(
                         "Plugin %s not found that matches the version range %s, available versions: %s",
@@ -219,44 +218,46 @@ public class DelegatingClassLoader extends URLClassLoader {
             if (range == null) {
                 return plugin;
             }
-
-            String pluginVersion;
-            SortedMap<PluginDesc<?>, ClassLoader> scannedPlugin = pluginLoaders.get(fullName);
-
-            if (scannedPlugin == null) {
-                throw new VersionedPluginLoadingException(String.format(
-                        "Plugin %s is not part of Connect's plugin loading mechanism (ClassPath or Plugin Path)",
-                        fullName
-                ));
-            }
-
-            List<PluginDesc<?>> classpathPlugins = scannedPlugin.keySet().stream()
-                    .filter(pluginDesc -> pluginDesc.location().equals("classpath"))
-                    .collect(Collectors.toList());
-
-            if (classpathPlugins.size() > 1) {
-                throw new VersionedPluginLoadingException(String.format(
-                        "Plugin %s has multiple versions specified in class path, "
-                                + "only one version is allowed in class path for loading a plugin with version range",
-                        fullName
-                ));
-            } else {
-                pluginVersion = classpathPlugins.get(0).version();
-                if (!range.containsVersion(new DefaultArtifactVersion(pluginVersion))) {
-                    throw new VersionedPluginLoadingException(String.format(
-                            "Plugin %s has version %s which does not match the required version range %s",
-                            fullName,
-                            pluginVersion,
-                            range
-                    ), Collections.singletonList(pluginVersion));
-                }
-            }
+            verifyClasspathVersionedPlugin(name, plugin, range);
         }
-
         return plugin;
     }
 
+    private void verifyClasspathVersionedPlugin(String name, Class<?> plugin, VersionRange range) throws VersionedPluginLoadingException {
+        String pluginVersion;
+        SortedMap<PluginDesc<?>, ClassLoader> scannedPlugin = pluginLoaders.get(name);
 
+        if (scannedPlugin == null) {
+            throw new VersionedPluginLoadingException(String.format(
+                    "Plugin %s is not part of Connect's plugin loading mechanism (ClassPath or Plugin Path)",
+                    name
+            ));
+        }
+
+        List<PluginDesc<?>> classpathPlugins = scannedPlugin.keySet().stream()
+                .filter(pluginDesc -> pluginDesc.location().equals("classpath"))
+                .collect(Collectors.toList());
+
+        if (classpathPlugins.size() > 1) {
+            throw new VersionedPluginLoadingException(String.format(
+                    "Plugin %s has multiple versions specified in class path, "
+                            + "only one version is allowed in class path for loading a plugin with version range",
+                    name
+            ));
+        } else if (classpathPlugins.isEmpty()) {
+            throw new VersionedPluginLoadingException("Invalid plugin found in classpath");
+        } else {
+            pluginVersion = classpathPlugins.get(0).version();
+            if (!range.containsVersion(new DefaultArtifactVersion(pluginVersion))) {
+                throw new VersionedPluginLoadingException(String.format(
+                        "Plugin %s has version %s which does not match the required version range %s",
+                        name,
+                        pluginVersion,
+                        range
+                ), Collections.singletonList(pluginVersion));
+            }
+        }
+    }
 
     private static Map<String, SortedMap<PluginDesc<?>, ClassLoader>> computePluginLoaders(PluginScanResult plugins) {
         Map<String, SortedMap<PluginDesc<?>, ClassLoader>> pluginLoaders = new HashMap<>();
