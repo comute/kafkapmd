@@ -198,8 +198,8 @@ allprojects {
   }
 
   tasks.withType(Checkstyle) {
-    minHeapSize = "50m"
-    maxHeapSize = "100m"
+    minHeapSize = "200m"
+    maxHeapSize = "1g"
   }
 
   clean {
