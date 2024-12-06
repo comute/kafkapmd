@@ -52,6 +52,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.Callable;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class Plugins {
@@ -234,7 +236,13 @@ public class Plugins {
      * @return A {@link LoaderSwap} handle which restores the prior classloader on {@link LoaderSwap#close()}.
      */
     public LoaderSwap withClassLoader(ClassLoader loader) {
-        return swapLoader(loader);
+        ClassLoader savedLoader = compareAndSwapLoaders(loader);
+        try {
+            return new LoaderSwap(savedLoader);
+        } catch (Throwable t) {
+            compareAndSwapLoaders(savedLoader);
+            throw t;
+        }
     }
 
     /**
@@ -252,14 +260,13 @@ public class Plugins {
         };
     }
 
-    public static LoaderSwap swapLoader(ClassLoader loader) {
-        ClassLoader savedLoader = compareAndSwapLoaders(loader);
-        try {
-            return new LoaderSwap(savedLoader);
-        } catch (Throwable t) {
-            compareAndSwapLoaders(savedLoader);
-            throw t;
-        }
+    public Function<ClassLoader, LoaderSwap> safeLoaderSwapper() {
+        return loader -> {
+            if (!(loader instanceof PluginClassLoader)) {
+                loader = delegatingLoader;
+            }
+            return withClassLoader(loader);
+        };
     }
 
     public String latestVersion(String classOrAlias) {
