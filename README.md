@@ -1,12 +1,10 @@
-# Apache Kafka
-
-<a href="https://kafka.apache.org/">
+# <a href="https://kafka.apache.org/">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/kafka-logo-readme-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="docs/images/kafka-logo-readme-light.svg">
   <img alt="Kafka Logo" src="docs/images/kafka-logo-readme-light.svg" width="80"> 
 </picture>
-</a>
+</a> Apache Kafka
 <br><br>
 
 See our [web site](https://kafka.apache.org) for details on the project.
