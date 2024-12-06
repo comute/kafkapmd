@@ -396,6 +396,44 @@ class TransactionMetadataTest {
   }
 
   @Test
+  def testClientTransactionVersionPersists(): Unit = {
+    val producerEpoch = (Short.MaxValue - 1).toShort
+
+    val txnMetadata = new TransactionMetadata(
+      transactionalId = transactionalId,
+      producerId = producerId,
+      previousProducerId = RecordBatch.NO_PRODUCER_ID,
+      nextProducerId = RecordBatch.NO_PRODUCER_ID,
+      producerEpoch = producerEpoch,
+      lastProducerEpoch = RecordBatch.NO_PRODUCER_EPOCH,
+      txnTimeoutMs = 30000,
+      state = Empty,
+      topicPartitions = mutable.Set.empty,
+      txnLastUpdateTimestamp = time.milliseconds(),
+      clientTransactionVersion = TV_0)
+
+    val transitMetadata1 = txnMetadata.prepareAddPartitions(Set[TopicPartition](new TopicPartition("topic1", 0)), time.milliseconds() - 1, TV_2)
+    txnMetadata.completeTransitionTo(transitMetadata1)
+    assertEquals(Ongoing, txnMetadata.state)
+    assertEquals(TV_2, txnMetadata.clientTransactionVersion)
+
+    val transitMetadata2 = txnMetadata.prepareAbortOrCommit(PrepareAbort, TV_2, RecordBatch.NO_PRODUCER_ID, time.milliseconds(), false)
+    txnMetadata.completeTransitionTo(transitMetadata2)
+    assertEquals(PrepareAbort, txnMetadata.state)
+    assertEquals(TV_2, txnMetadata.clientTransactionVersion)
+
+    val transitMetadata3 = txnMetadata.prepareComplete(time.milliseconds())
+    txnMetadata.completeTransitionTo(transitMetadata3)
+    assertEquals(CompleteAbort, txnMetadata.state)
+    assertEquals(TV_2, txnMetadata.clientTransactionVersion)
+
+    val transitMetadata4 = txnMetadata.prepareProducerIdRotation(producerId + 1, 30000, time.milliseconds(), recordLastEpoch = true)
+    txnMetadata.completeTransitionTo(transitMetadata4)
+    assertEquals(Empty, txnMetadata.state)
+    assertEquals(TV_2, txnMetadata.clientTransactionVersion)
+  }
+
+  @Test
   def testFenceProducerAfterEpochsExhausted(): Unit = {
     val producerEpoch = (Short.MaxValue - 1).toShort
 
