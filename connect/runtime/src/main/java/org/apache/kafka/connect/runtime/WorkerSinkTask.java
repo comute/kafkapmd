@@ -67,6 +67,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -123,9 +124,10 @@ class WorkerSinkTask extends WorkerTask<ConsumerRecord<byte[], byte[]>, SinkReco
                           RetryWithToleranceOperator<ConsumerRecord<byte[], byte[]>> retryWithToleranceOperator,
                           WorkerErrantRecordReporter workerErrantRecordReporter,
                           StatusBackingStore statusBackingStore,
-                          Supplier<List<ErrorReporter<ConsumerRecord<byte[], byte[]>>>> errorReportersSupplier) {
+                          Supplier<List<ErrorReporter<ConsumerRecord<byte[], byte[]>>>> errorReportersSupplier,
+                          Function<ClassLoader, LoaderSwap> pluginLoaderSwapper) {
         super(id, statusListener, initialState, loader, connectMetrics, errorMetrics,
-                retryWithToleranceOperator, transformationChain, errorReportersSupplier, time, statusBackingStore);
+                retryWithToleranceOperator, transformationChain, errorReportersSupplier, time, statusBackingStore, pluginLoaderSwapper);
 
         this.workerConfig = workerConfig;
         this.task = task;
@@ -538,12 +540,12 @@ class WorkerSinkTask extends WorkerTask<ConsumerRecord<byte[], byte[]>, SinkReco
 
     private SinkRecord convertAndTransformRecord(ProcessingContext<ConsumerRecord<byte[], byte[]>> context, final ConsumerRecord<byte[], byte[]> msg) {
         SchemaAndValue keyAndSchema = retryWithToleranceOperator.execute(context, () -> {
-            try (LoaderSwap swap = Plugins.swapLoader(keyConverter.getClass().getClassLoader())) {
+            try (LoaderSwap swap = pluginLoaderSwapper.apply(keyConverter.getClass().getClassLoader())) {
                 return keyConverter.toConnectData(msg.topic(), msg.headers(), msg.key());
             }}, Stage.KEY_CONVERTER, keyConverter.getClass());
 
         SchemaAndValue valueAndSchema = retryWithToleranceOperator.execute(context, () -> {
-            try(LoaderSwap swap = Plugins.swapLoader(valueConverter.getClass().getClassLoader())) {
+            try(LoaderSwap swap = pluginLoaderSwapper.apply(valueConverter.getClass().getClassLoader())) {
                     return valueConverter.toConnectData(msg.topic(), msg.headers(), msg.value());
             }}, Stage.VALUE_CONVERTER, valueConverter.getClass());
 
@@ -582,7 +584,7 @@ class WorkerSinkTask extends WorkerTask<ConsumerRecord<byte[], byte[]>, SinkReco
         if (recordHeaders != null) {
             String topic = record.topic();
             for (org.apache.kafka.common.header.Header recordHeader : recordHeaders) {
-                try (LoaderSwap swap = Plugins.swapLoader(headerConverter.getClass().getClassLoader())) {
+                try (LoaderSwap swap = pluginLoaderSwapper.apply(headerConverter.getClass().getClassLoader())) {
                     SchemaAndValue schemaAndValue = headerConverter.toConnectHeader(topic, recordHeader.key(), recordHeader.value());
                     result.add(recordHeader.key(), schemaAndValue);
                 }
