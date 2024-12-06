@@ -31,6 +31,7 @@ import org.apache.kafka.connect.runtime.ConnectMetrics.MetricGroup;
 import org.apache.kafka.connect.runtime.errors.ErrorHandlingMetrics;
 import org.apache.kafka.connect.runtime.errors.ErrorReporter;
 import org.apache.kafka.connect.runtime.errors.RetryWithToleranceOperator;
+import org.apache.kafka.connect.runtime.isolation.LoaderSwap;
 import org.apache.kafka.connect.storage.StatusBackingStore;
 import org.apache.kafka.connect.util.ConnectorTaskId;
 import org.apache.kafka.connect.util.LoggingContext;
@@ -43,6 +44,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -77,6 +79,7 @@ abstract class WorkerTask<T, R extends ConnectRecord<R>> implements Runnable {
     protected final RetryWithToleranceOperator<T> retryWithToleranceOperator;
     protected final TransformationChain<T, R> transformationChain;
     private final Supplier<List<ErrorReporter<T>>> errorReportersSupplier;
+    protected final Function<ClassLoader, LoaderSwap> pluginLoaderSwapper;
 
     public WorkerTask(ConnectorTaskId id,
                       TaskStatus.Listener statusListener,
@@ -88,7 +91,8 @@ abstract class WorkerTask<T, R extends ConnectRecord<R>> implements Runnable {
                       TransformationChain<T, R> transformationChain,
                       Supplier<List<ErrorReporter<T>>> errorReportersSupplier,
                       Time time,
-                      StatusBackingStore statusBackingStore) {
+                      StatusBackingStore statusBackingStore,
+                      Function<ClassLoader, LoaderSwap> pluginLoaderSwapper) {
         this.id = id;
         this.taskMetricsGroup = new TaskMetricsGroup(this.id, connectMetrics, statusListener);
         this.errorMetrics = errorMetrics;
@@ -104,6 +108,7 @@ abstract class WorkerTask<T, R extends ConnectRecord<R>> implements Runnable {
         this.errorReportersSupplier = errorReportersSupplier;
         this.time = time;
         this.statusBackingStore = statusBackingStore;
+        this.pluginLoaderSwapper = pluginLoaderSwapper;
     }
 
     public ConnectorTaskId id() {

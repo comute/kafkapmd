@@ -17,6 +17,7 @@ import org.apache.kafka.connect.util.PluginVersionUtils;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class RequiredPluginsMetadata {
@@ -41,7 +42,8 @@ public class RequiredPluginsMetadata {
             Converter keyConverter,
             Converter valueConverter,
             HeaderConverter headerConverter,
-            List<TransformationStage.StageInfo> transformationStageInfo
+            List<TransformationStage.StageInfo> transformationStageInfo,
+            Function<ClassLoader, LoaderSwap> pluginLoaderSwapper
     ) {
 
         assert connector != null;
@@ -52,30 +54,28 @@ public class RequiredPluginsMetadata {
         assert transformationStageInfo != null;
 
         this.connectorClass = connector.getClass().getName();
-        this.connectorVersion = PluginVersionUtils.getVersionOrUndefined(connector);
+        this.connectorVersion = PluginVersionUtils.getVersionOrUndefined(connector, pluginLoaderSwapper);
         this.connectorType = getConnectorType(connector);
         this.taskClass = task.getClass().getName();
         this.taskVersion = task.version();
         this.keyConverterClass = keyConverter.getClass().getName();
-        this.keyConverterVersion = PluginVersionUtils.getVersionOrUndefined(keyConverter);
+        this.keyConverterVersion = PluginVersionUtils.getVersionOrUndefined(keyConverter, pluginLoaderSwapper);
         this.valueConverterClass = valueConverter.getClass().getName();
-        this.valueConverterVersion = PluginVersionUtils.getVersionOrUndefined(valueConverter);
+        this.valueConverterVersion = PluginVersionUtils.getVersionOrUndefined(valueConverter, pluginLoaderSwapper);
         this.headerConverterClass = headerConverter.getClass().getName();
-        this.headerConverterVersion = PluginVersionUtils.getVersionOrUndefined(headerConverter);
+        this.headerConverterVersion = PluginVersionUtils.getVersionOrUndefined(headerConverter, pluginLoaderSwapper);
         this.transformations = transformationStageInfo.stream().map(TransformationStage.StageInfo::transform).collect(Collectors.toSet());
         this.predicates = transformationStageInfo.stream().map(TransformationStage.StageInfo::predicate).filter(Objects::nonNull).collect(Collectors.toSet());
     }
 
 
     public ConnectorType getConnectorType(Connector connector) {
-        try (LoaderSwap swap = Plugins.swapLoader(connector.getClass().getClassLoader())) {
-            if (connector instanceof SourceConnector) {
-                return ConnectorType.SOURCE;
-            } else if (connector instanceof SinkConnector) {
-                return ConnectorType.SINK;
-            } else {
-                return ConnectorType.UNKNOWN;
-            }
+        if (connector instanceof SourceConnector) {
+            return ConnectorType.SOURCE;
+        } else if (connector instanceof SinkConnector) {
+            return ConnectorType.SINK;
+        } else {
+            return ConnectorType.UNKNOWN;
         }
     }
 

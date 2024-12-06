@@ -2,10 +2,16 @@ package org.apache.kafka.connect.util;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.connect.components.Versioned;
+import org.apache.kafka.connect.runtime.isolation.LoaderSwap;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
 
+import java.util.function.Function;
+
 public class PluginVersionUtils {
+
+    public static final String UNDEFINED_VERSION = "undefined";
 
     public static VersionRange connectorVersionRequirement(String version) throws InvalidVersionSpecificationException {
         if (version == null || version.equals("latest")) {
@@ -36,6 +42,18 @@ public class PluginVersionUtils {
             }
         }
 
+    }
+
+    public static <T> String getVersionOrUndefined(T obj, Function<ClassLoader, LoaderSwap> pluginLoaderSwapper) {
+        if (obj == null) {
+            return UNDEFINED_VERSION;
+        }
+        try (LoaderSwap swap = pluginLoaderSwapper.apply(obj.getClass().getClassLoader())) {
+            if (obj instanceof Versioned) {
+                return ((Versioned) obj).version();
+            }
+        }
+        return UNDEFINED_VERSION;
     }
 }
 

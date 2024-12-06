@@ -29,6 +29,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.runtime.errors.ToleranceType;
 import org.apache.kafka.connect.runtime.isolation.LoaderSwap;
 import org.apache.kafka.connect.runtime.isolation.PluginDesc;
+import org.apache.kafka.connect.runtime.isolation.PluginUtils;
 import org.apache.kafka.connect.runtime.isolation.Plugins;
 import org.apache.kafka.connect.runtime.isolation.PluginsRecommenders;
 import org.apache.kafka.connect.runtime.isolation.VersionedPluginLoadingException;
@@ -365,6 +366,8 @@ public class ConnectorConfig extends AbstractConfig {
      * Returns the initialized list of {@link TransformationStage} which apply the
      * {@link Transformation transformations} and {@link Predicate predicates}
      * as they are specified in the {@link #TRANSFORMS_CONFIG} and {@link #PREDICATES_CONFIG}
+     *
+     * This is kept for tests and should be deprecated in the future. Use the following method instead.
      */
     public <R extends ConnectRecord<R>> List<TransformationStage<R>> transformationStages() {
         final List<String> transformAliases = getList(TRANSFORMS_CONFIG);
@@ -384,9 +387,10 @@ public class ConnectorConfig extends AbstractConfig {
                     @SuppressWarnings("unchecked")
                     Predicate<R> predicate = Utils.newInstance(getClass(predicatePrefix + "type"), Predicate.class);
                     predicate.configure(originalsWithPrefix(predicatePrefix));
-                    transformations.add(new TransformationStage<>(predicate, predicateAlias, negate != null && Boolean.parseBoolean(negate.toString()), transformation, alias));
+                    transformations.add(new TransformationStage<>(
+                            predicate, predicateAlias, negate != null && Boolean.parseBoolean(negate.toString()), transformation, alias, PluginUtils.noOpLoaderSwap()));
                 } else {
-                    transformations.add(new TransformationStage<>(transformation, alias));
+                    transformations.add(new TransformationStage<>(transformation, alias, PluginUtils.noOpLoaderSwap()));
                 }
             } catch (Exception e) {
                 throw new ConnectException(e);
@@ -418,9 +422,10 @@ public class ConnectorConfig extends AbstractConfig {
                     @SuppressWarnings("unchecked")
                     Predicate<R> predicate = getTransformationOrPredicate(plugins, predicateTypeConfig, predicateVersionConfig, Predicate.class);
                     predicate.configure(originalsWithPrefix(predicatePrefix));
-                    transformations.add(new TransformationStage<>(predicate, predicateAlias, negate != null && Boolean.parseBoolean(negate.toString()), transformation, alias));
+                    transformations.add(new TransformationStage<>(
+                            predicate, predicateAlias, negate != null && Boolean.parseBoolean(negate.toString()), transformation, alias, plugins.safeLoaderSwapper()));
                 } else {
-                    transformations.add(new TransformationStage<>(transformation, alias));
+                    transformations.add(new TransformationStage<>(transformation, alias, plugins.safeLoaderSwapper()));
                 }
             } catch (Exception e) {
                 throw new ConnectException(e);
