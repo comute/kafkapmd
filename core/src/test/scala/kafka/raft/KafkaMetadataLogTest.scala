@@ -217,7 +217,7 @@ final class KafkaMetadataLogTest {
     val snapshotId = new OffsetAndEpoch(numberOfRecords-4, epoch)
     val log = buildMetadataLog(tempDir, mockTime)
 
-    1 to numberOfRecords foreach(_ => append(log, 1, epoch))
+    (1 to numberOfRecords).foreach(_ => append(log, 1, epoch))
     log.updateHighWatermark(new LogOffsetMetadata(numberOfRecords))
     createNewSnapshot(log, snapshotId)
 
