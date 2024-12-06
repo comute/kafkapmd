@@ -713,19 +713,19 @@ public class Worker {
                         plugins.newHeaderConverter(connConfig, WorkerConfig.HEADER_CONVERTER_CLASS_CONFIG, ClassLoaderUsage.CURRENT_CLASSLOADER);
 
                 if (keyConverter == null) {
-                    keyConverter = plugins.newConverter(config, WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, WorkerConfig.KEY_CONVERTER_VERSION_CONFIG);
+                    keyConverter = plugins.newConverter(config, WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, WorkerConfig.KEY_CONVERTER_VERSION);
                     log.info("Set up the key converter {} for task {} using the worker config", keyConverter.getClass(), id);
                 } else {
                     log.info("Set up the key converter {} for task {} using the connector config", keyConverter.getClass(), id);
                 }
                 if (valueConverter == null) {
-                    valueConverter = plugins.newConverter(config, WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, WorkerConfig.VALUE_CONVERTER_VERSION_CONFIG);
+                    valueConverter = plugins.newConverter(config, WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, WorkerConfig.VALUE_CONVERTER_VERSION);
                     log.info("Set up the value converter {} for task {} using the worker config", valueConverter.getClass(), id);
                 } else {
                     log.info("Set up the value converter {} for task {} using the connector config", valueConverter.getClass(), id);
                 }
                 if (headerConverter == null) {
-                    headerConverter = plugins.newHeaderConverter(config, WorkerConfig.HEADER_CONVERTER_CLASS_CONFIG, WorkerConfig.HEADER_CONVERTER_VERSION_CONFIG);
+                    headerConverter = plugins.newHeaderConverter(config, WorkerConfig.HEADER_CONVERTER_CLASS_CONFIG, WorkerConfig.HEADER_CONVERTER_VERSION);
                     log.info("Set up the header converter {} for task {} using the worker config", headerConverter.getClass(), id);
                 } else {
                     log.info("Set up the header converter {} for task {} using the connector config", headerConverter.getClass(), id);
@@ -1258,7 +1258,7 @@ public class Worker {
         final String version = connProps.get(ConnectorConfig.CONNECTOR_VERSION);
 
         try {
-            return plugins.connectorLoader(klass, PluginVersionUtils.connectorVersionRequirement(version));
+            return plugins.pluginLoader(klass, PluginVersionUtils.connectorVersionRequirement(version));
         } catch (InvalidVersionSpecificationException | ClassNotFoundException | VersionedPluginLoadingException e) {
             throw new ConnectException(
                     String.format("Failed to instantiate class loader for connector %s, class %s", klass, connProps.get(ConnectorConfig.NAME_CONFIG)), e);

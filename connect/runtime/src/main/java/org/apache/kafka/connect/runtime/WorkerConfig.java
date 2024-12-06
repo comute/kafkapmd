@@ -78,7 +78,7 @@ public class WorkerConfig extends AbstractConfig {
                     " independent of connectors it allows any connector to work with any serialization format." +
                     " Examples of common formats include JSON and Avro.";
 
-    public static final String KEY_CONVERTER_VERSION_CONFIG = "key.converter." + PLUGIN_VERSION_SUFFIX;
+    public static final String KEY_CONVERTER_VERSION = "key.converter." + PLUGIN_VERSION_SUFFIX;
     public static final String KEY_CONVERTER_VERSION_DEFAULT = null;
     public static final String KEY_CONVERTER_VERSION_DOC = "Version of the key converter.";
 
@@ -89,7 +89,7 @@ public class WorkerConfig extends AbstractConfig {
                     " independent of connectors it allows any connector to work with any serialization format." +
                     " Examples of common formats include JSON and Avro.";
 
-    public static final String VALUE_CONVERTER_VERSION_CONFIG = "value.converter." + PLUGIN_VERSION_SUFFIX;
+    public static final String VALUE_CONVERTER_VERSION = "value.converter." + PLUGIN_VERSION_SUFFIX;
     public static final String VALUE_CONVERTER_VERSION_DEFAULT = null;
     public static final String VALUE_CONVERTER_VERSION_DOC = "Version of the value converter.";
 
@@ -102,7 +102,7 @@ public class WorkerConfig extends AbstractConfig {
                     " header values to strings and deserialize them by inferring the schemas.";
     public static final String HEADER_CONVERTER_CLASS_DEFAULT = SimpleHeaderConverter.class.getName();
 
-    public static final String HEADER_CONVERTER_VERSION_CONFIG = "header.converter." + PLUGIN_VERSION_SUFFIX;
+    public static final String HEADER_CONVERTER_VERSION = "header.converter." + PLUGIN_VERSION_SUFFIX;
     public static final String HEADER_CONVERTER_VERSION_DEFAULT = null;
     public static final String HEADER_CONVERTER_VERSION_DOC = "Version of the header converter.";
 
@@ -216,11 +216,11 @@ public class WorkerConfig extends AbstractConfig {
                         CLIENT_DNS_LOOKUP_DOC)
                 .define(KEY_CONVERTER_CLASS_CONFIG, Type.CLASS,
                         Importance.HIGH, KEY_CONVERTER_CLASS_DOC)
-                .define(KEY_CONVERTER_VERSION_CONFIG, Type.STRING,
+                .define(KEY_CONVERTER_VERSION, Type.STRING,
                         KEY_CONVERTER_VERSION_DEFAULT, Importance.LOW, KEY_CONVERTER_VERSION_DOC)
                 .define(VALUE_CONVERTER_CLASS_CONFIG, Type.CLASS,
                         Importance.HIGH, VALUE_CONVERTER_CLASS_DOC)
-                .define(VALUE_CONVERTER_VERSION_CONFIG, Type.STRING,
+                .define(VALUE_CONVERTER_VERSION, Type.STRING,
                         VALUE_CONVERTER_VERSION_DEFAULT, Importance.LOW, VALUE_CONVERTER_VERSION_DOC)
                 .define(TASK_SHUTDOWN_GRACEFUL_TIMEOUT_MS_CONFIG, Type.LONG,
                         TASK_SHUTDOWN_GRACEFUL_TIMEOUT_MS_DEFAULT, Importance.LOW,
@@ -262,7 +262,7 @@ public class WorkerConfig extends AbstractConfig {
                 .define(HEADER_CONVERTER_CLASS_CONFIG, Type.CLASS,
                         HEADER_CONVERTER_CLASS_DEFAULT,
                         Importance.LOW, HEADER_CONVERTER_CLASS_DOC)
-                .define(HEADER_CONVERTER_VERSION_CONFIG, Type.STRING,
+                .define(HEADER_CONVERTER_VERSION, Type.STRING,
                         HEADER_CONVERTER_VERSION_DEFAULT, Importance.LOW, HEADER_CONVERTER_VERSION_DOC)
                 .define(CONFIG_PROVIDERS_CONFIG, Type.LIST,
                         Collections.emptyList(),
@@ -377,11 +377,11 @@ public class WorkerConfig extends AbstractConfig {
     }
 
     public boolean isKeyConverterVersionPresent() {
-        return get(WorkerConfig.KEY_CONVERTER_VERSION_CONFIG) != null;
+        return get(WorkerConfig.KEY_CONVERTER_VERSION) != null;
     }
 
     public boolean isValueConverterVersionPresent() {
-        return get(WorkerConfig.VALUE_CONVERTER_VERSION_CONFIG) != null;
+        return get(WorkerConfig.VALUE_CONVERTER_VERSION) != null;
     }
 
     public boolean isHeaderConverterVersionPresent() {

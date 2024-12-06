@@ -36,7 +36,6 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.predicates.Predicate;
 
 import org.apache.kafka.connect.util.PluginVersionUtils;
-import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.slf4j.Logger;
@@ -52,6 +51,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.Callable;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class Plugins {
@@ -64,6 +65,7 @@ public class Plugins {
     private static final Logger log = LoggerFactory.getLogger(Plugins.class);
     private final DelegatingClassLoader delegatingLoader;
     private final PluginScanResult scanResult;
+    private PluginsRecommenders recommenders = null;
 
     public Plugins(Map<String, String> props) {
         this(props, Plugins.class.getClassLoader(), new ClassLoaderFactory());
@@ -236,7 +238,13 @@ public class Plugins {
      * @return A {@link LoaderSwap} handle which restores the prior classloader on {@link LoaderSwap#close()}.
      */
     public LoaderSwap withClassLoader(ClassLoader loader) {
-        return swapLoader(loader);
+        ClassLoader savedLoader = compareAndSwapLoaders(loader);
+        try {
+            return new LoaderSwap(savedLoader);
+        } catch (Throwable t) {
+            compareAndSwapLoaders(savedLoader);
+            throw t;
+        }
     }
 
     /**
@@ -254,16 +262,14 @@ public class Plugins {
         };
     }
 
-    public static LoaderSwap swapLoader(ClassLoader loader) {
-        ClassLoader savedLoader = compareAndSwapLoaders(loader);
-        try {
-            return new LoaderSwap(savedLoader);
-        } catch (Throwable t) {
-            compareAndSwapLoaders(savedLoader);
-            throw t;
-        }
+    public Function<ClassLoader, LoaderSwap> safeLoaderSwapper() {
+        return loader -> {
+            if (!(loader instanceof PluginClassLoader)) {
+                loader = delegatingLoader;
+            }
+            return withClassLoader(loader);
+        };
     }
-
 
     public String latestVersion(String classOrAlias) {
         return delegatingLoader.latestVersion(classOrAlias);
@@ -273,13 +279,19 @@ public class Plugins {
         return delegatingLoader;
     }
 
+    // kept for compatibility
     public ClassLoader connectorLoader(String connectorClassOrAlias) {
-        return delegatingLoader.connectorLoader(connectorClassOrAlias);
+        return delegatingLoader.loader(connectorClassOrAlias);
     }
 
-    public ClassLoader connectorLoader(String connectorClassOrAlias, VersionRange range) throws ClassNotFoundException, VersionedPluginLoadingException {
-        return delegatingLoader.connectorLoader(connectorClassOrAlias, range);
+    public ClassLoader pluginLoader(String classOrAlias, VersionRange range) throws ClassNotFoundException, VersionedPluginLoadingException {
+        return delegatingLoader.loader(classOrAlias, range);
     }
+
+    public ClassLoader pluginLoader(String classOrAlias) {
+        return delegatingLoader.loader(classOrAlias);
+    }
+
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Set<PluginDesc<Connector>> connectors() {
@@ -308,7 +320,7 @@ public class Plugins {
         return scanResult.converters();
     }
 
-    public Set<PluginDesc<Converter>> converters(String converterClassOrAlias) {
+    Set<PluginDesc<Converter>> converters(String converterClassOrAlias) {
         return pluginsOfClass(converterClassOrAlias, scanResult.converters());
     }
 
@@ -316,7 +328,7 @@ public class Plugins {
         return scanResult.headerConverters();
     }
 
-    public Set<PluginDesc<HeaderConverter>> headerConverters(String headerConverterClassOrAlias) {
+    Set<PluginDesc<HeaderConverter>> headerConverters(String headerConverterClassOrAlias) {
         return pluginsOfClass(headerConverterClassOrAlias, scanResult.headerConverters());
     }
 
@@ -324,7 +336,7 @@ public class Plugins {
         return scanResult.transformations();
     }
 
-    public Set<PluginDesc<Transformation<?>>> transformations(String transformationClassOrAlias) {
+    Set<PluginDesc<Transformation<?>>> transformations(String transformationClassOrAlias) {
         return pluginsOfClass(transformationClassOrAlias, scanResult.transformations());
     }
 
@@ -332,7 +344,7 @@ public class Plugins {
         return scanResult.predicates();
     }
 
-    public Set<PluginDesc<Predicate<?>>> predicates(String predicateClassOrAlias) {
+    Set<PluginDesc<Predicate<?>>> predicates(String predicateClassOrAlias) {
         return pluginsOfClass(predicateClassOrAlias, scanResult.predicates());
     }
 
@@ -676,4 +688,10 @@ public class Plugins {
         return plugin;
     }
 
+    public PluginsRecommenders pluginsRecommenders() {
+        if (this.recommenders == null) {
+            this.recommenders = new PluginsRecommenders(this);
+        }
+        return this.recommenders;
+    }
 }
