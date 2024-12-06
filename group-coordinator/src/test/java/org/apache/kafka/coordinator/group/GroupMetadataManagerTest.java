@@ -378,7 +378,7 @@ public class GroupMetadataManagerTest {
                         .setRackId("rackid")));
         assertEquals("InstanceId can't be null.", ex.getMessage());
 
-        // With non-static membership, the memberEpoch must be -1 or greater
+        // valid memberEpoch values are 0+, -1 (member leave group), or -2 (static member leave group)
         ex = assertThrows(InvalidRequestException.class, () -> context.streamsGroupHeartbeat(
                 new StreamsGroupHeartbeatRequestData()
                         .setGroupId("foo")
