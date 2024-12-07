@@ -34,9 +34,7 @@ import org.apache.kafka.connect.storage.ConverterType;
 import org.apache.kafka.connect.storage.HeaderConverter;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.predicates.Predicate;
-
 import org.apache.kafka.connect.util.PluginVersionUtils;
-import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.slf4j.Logger;
@@ -52,7 +50,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -184,8 +181,7 @@ public class Plugins {
             Class<U> pluginClass,
             VersionRange range
     ) throws VersionedPluginLoadingException, ClassNotFoundException {
-        Class<?> klass = range != null ?
-            loader.loadVersionedPluginClass(classOrAlias, range, false) : loader.loadClass(classOrAlias, false);
+        Class<?> klass = loader.loadVersionedPluginClass(classOrAlias, range, false);
         if (pluginClass.isAssignableFrom(klass)) {
             return (Class<? extends U>) klass;
         }
@@ -452,7 +448,7 @@ public class Plugins {
      * @throws VersionedPluginLoadingException if the version requested is not found
      */
     public Converter newConverter(AbstractConfig config, String classPropertyName, String versionPropertyName) {
-        ClassLoaderUsage classLoader = config.getString(versionPropertyName) == null ? ClassLoaderUsage.CURRENT_CLASSLOADER: ClassLoaderUsage.PLUGINS;
+        ClassLoaderUsage classLoader = config.getString(versionPropertyName) == null ? ClassLoaderUsage.CURRENT_CLASSLOADER : ClassLoaderUsage.PLUGINS;
         return newConverter(config, classPropertyName, versionPropertyName, classLoader);
     }
 
@@ -473,7 +469,7 @@ public class Plugins {
 
         Converter plugin = newVersionedPlugin(config, classPropertyName, versionPropertyName,
                 Converter.class, classLoaderUsage, scanResult.converters());
-        try (LoaderSwap loaderSwap = withClassLoader(plugin.getClass().getClassLoader())) {
+        try (LoaderSwap loaderSwap = safeLoaderSwapper().apply(plugin.getClass().getClassLoader())) {
             plugin.configure(converterConfig, isKeyConverter);
         }
         return plugin;
@@ -531,7 +527,7 @@ public class Plugins {
      * @throws ConnectException if the {@link HeaderConverter} implementation class could not be found
      */
     public HeaderConverter newHeaderConverter(AbstractConfig config, String classPropertyName, String versionPropertyName) {
-        ClassLoaderUsage classLoader = config.getString(versionPropertyName) == null ? ClassLoaderUsage.CURRENT_CLASSLOADER: ClassLoaderUsage.PLUGINS;
+        ClassLoaderUsage classLoader = config.getString(versionPropertyName) == null ? ClassLoaderUsage.CURRENT_CLASSLOADER : ClassLoaderUsage.PLUGINS;
         return newHeaderConverter(config, classPropertyName, versionPropertyName, classLoader);
     }
 
@@ -548,7 +544,7 @@ public class Plugins {
         converterConfig.put(ConverterConfig.TYPE_CONFIG, ConverterType.HEADER.getName());
         log.debug("Configuring the header converter with configuration keys:{}{}", System.lineSeparator(), converterConfig.keySet());
 
-        try (LoaderSwap loaderSwap = withClassLoader(plugin.getClass().getClassLoader())) {
+        try (LoaderSwap loaderSwap = safeLoaderSwapper().apply(plugin.getClass().getClassLoader())) {
             plugin.configure(converterConfig);
         }
         return plugin;
@@ -622,7 +618,7 @@ public class Plugins {
         // Configure the ConfigProvider
         String configPrefix = providerPrefix + ".param.";
         Map<String, Object> configProviderConfig = config.originalsWithPrefix(configPrefix);
-        try (LoaderSwap loaderSwap = withClassLoader(plugin.getClass().getClassLoader())) {
+        try (LoaderSwap loaderSwap = safeLoaderSwapper().apply(plugin.getClass().getClassLoader())) {
             plugin.configure(configProviderConfig);
         }
         return plugin;

@@ -101,13 +101,10 @@ public class DelegatingClassLoader extends URLClassLoader {
         return pluginClassLoader(name, null);
     }
 
-    ClassLoader loader(String classOrAlias, VersionRange range) throws ClassNotFoundException {
+    ClassLoader loader(String classOrAlias, VersionRange range) {
         String fullName = aliases.getOrDefault(classOrAlias, classOrAlias);
-        ClassLoader classLoader = range == null ? pluginClassLoader(fullName) :
-                // load the plugin class when version is provided which will validate the correct version is loaded
-                loadVersionedPluginClass(fullName, range, false).getClassLoader();
-        // the classloader returned can be the classpath loader in which case we should return the delegating classloader
-        if (!(classLoader instanceof PluginClassLoader)) {
+        ClassLoader classLoader = pluginClassLoader(fullName, range);
+        if (classLoader == null) {
             classLoader = this;
         }
         log.debug(
@@ -119,12 +116,7 @@ public class DelegatingClassLoader extends URLClassLoader {
     }
 
     ClassLoader loader(String classOrAlias) {
-        try {
-            return loader(classOrAlias, null);
-        } catch (ClassNotFoundException e) {
-            // class not found should not happen here as version is not provided
-        }
-        return this;
+        return loader(classOrAlias, null);
     }
 
     ClassLoader connectorLoader(String connectorClassOrAlias) {
