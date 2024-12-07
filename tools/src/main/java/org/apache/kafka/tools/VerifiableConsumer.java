@@ -574,7 +574,6 @@ public class VerifiableConsumer implements Closeable, OffsetCommitCallback, Cons
         parser.addArgument("--session-timeout")
                 .action(store())
                 .required(false)
-                .setDefault(30000)
                 .type(Integer.class)
                 .metavar("TIMEOUT_MS")
                 .dest("sessionTimeout")
@@ -651,7 +650,10 @@ public class VerifiableConsumer implements Closeable, OffsetCommitCallback, Cons
         } else {
             // This means we're using the CLASSIC consumer group protocol.
             consumerProps.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, res.getString("assignmentStrategy"));
-            consumerProps.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, Integer.toString(res.getInt("sessionTimeout")));
+            Integer sessionTimeout = res.getInt("sessionTimeout");
+            if (sessionTimeout != null) {
+                consumerProps.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, Integer.toString(sessionTimeout));
+            }
         }
 
         consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, res.getString("groupId"));
