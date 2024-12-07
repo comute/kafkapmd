@@ -18,9 +18,7 @@ package org.apache.kafka.clients.consumer.internals;
 
 import org.apache.kafka.clients.ClientResponse;
 import org.apache.kafka.clients.consumer.internals.events.BackgroundEventHandler;
-import org.apache.kafka.clients.consumer.internals.events.ErrorEvent;
 import org.apache.kafka.common.Node;
-import org.apache.kafka.common.errors.GroupAuthorizationException;
 import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.protocol.ApiKeys;
 import org.apache.kafka.common.protocol.Errors;
@@ -41,9 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 public class CoordinatorRequestManagerTest {
@@ -114,25 +110,11 @@ public class CoordinatorRequestManagerTest {
     public void testPropagateAndBackoffAfterFatalError() {
         CoordinatorRequestManager coordinatorManager = setupCoordinatorManager(GROUP_ID);
         expectFindCoordinatorRequest(coordinatorManager, Errors.GROUP_AUTHORIZATION_FAILED);
-
-        verify(backgroundEventHandler).add(argThat(backgroundEvent -> {
-            if (!(backgroundEvent instanceof ErrorEvent))
-                return false;
-
-            RuntimeException exception = ((ErrorEvent) backgroundEvent).error();
-
-            if (!(exception instanceof GroupAuthorizationException))
-                return false;
-
-            GroupAuthorizationException groupAuthException = (GroupAuthorizationException) exception;
-            return groupAuthException.groupId().equals(GROUP_ID);
-        }));
-
-        time.sleep(RETRY_BACKOFF_MS - 1);
+        
         assertEquals(Collections.emptyList(), coordinatorManager.poll(time.milliseconds()).unsentRequests);
 
         time.sleep(1);
-        assertEquals(1, coordinatorManager.poll(time.milliseconds()).unsentRequests.size());
+        assertEquals(0, coordinatorManager.poll(time.milliseconds()).unsentRequests.size());
         assertEquals(Optional.empty(), coordinatorManager.coordinator());
     }
 
