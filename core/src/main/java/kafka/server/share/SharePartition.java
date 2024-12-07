@@ -33,6 +33,7 @@ import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.apache.kafka.common.message.ShareFetchResponseData.AcquiredRecords;
 import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.record.RecordBatch;
+import org.apache.kafka.common.requests.ListOffsetsRequest;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.coordinator.group.GroupConfig;
 import org.apache.kafka.coordinator.group.GroupConfigManager;
@@ -2085,9 +2086,18 @@ public class SharePartition {
             offsetResetStrategy = GroupConfig.defaultShareAutoOffsetReset();
         }
 
-        if (offsetResetStrategy == ShareGroupAutoOffsetResetStrategy.EARLIEST)
+        if (offsetResetStrategy.timestamp().isEmpty()) {
+            throw new Exception("The timestamp is not available for the share partition: " + topicIdPartition);
+        }
+        final long timestamp = offsetResetStrategy.timestamp().get();
+
+        if (timestamp == ListOffsetsRequest.LATEST_TIMESTAMP) {
+            return offsetForLatestTimestamp(topicIdPartition, replicaManager);
+        } else if (timestamp == ListOffsetsRequest.EARLIEST_TIMESTAMP) {
             return offsetForEarliestTimestamp(topicIdPartition, replicaManager);
-        return offsetForLatestTimestamp(topicIdPartition, replicaManager);
+        } else {
+            return offsetForTimestamp(topicIdPartition, replicaManager, timestamp);
+        }
     }
 
     // Visible for testing. Should only be used for testing purposes.
