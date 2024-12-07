@@ -77,6 +77,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static kafka.server.share.ShareFetchUtils.offsetForEarliestTimestamp;
 import static kafka.server.share.ShareFetchUtils.offsetForLatestTimestamp;
+import static kafka.server.share.ShareFetchUtils.offsetForTimestamp;
 
 /**
  * The SharePartition is used to track the state of a partition that is shared between multiple
