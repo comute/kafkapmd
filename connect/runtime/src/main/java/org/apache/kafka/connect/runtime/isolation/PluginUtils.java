@@ -45,6 +45,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
@@ -139,6 +140,7 @@ public class PluginUtils {
     // regular expression pattern
     private static final Pattern INCLUDE = Pattern.compile("^org\\.apache\\.kafka\\.(?:connect\\.(?:"
             + "transforms\\.(?!Transformation|predicates\\.Predicate$).*"
+            + "|testing\\..*"
             + "|json\\..*"
             + "|file\\..*"
             + "|mirror\\..*"
@@ -443,6 +445,12 @@ public class PluginUtils {
             }
         }
         return aliases;
+    }
+
+    public static Function<ClassLoader, LoaderSwap> noOpLoaderSwap() {
+        return classLoader -> {
+            return new LoaderSwap(Thread.currentThread().getContextClassLoader());
+        };
     }
 
     private static class DirectoryEntry {
