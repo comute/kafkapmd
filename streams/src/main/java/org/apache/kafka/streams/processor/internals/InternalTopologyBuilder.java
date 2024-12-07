@@ -22,6 +22,7 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.AutoOffsetReset
 import org.apache.kafka.streams.TopologyConfig;
 import org.apache.kafka.streams.errors.TopologyException;
 import org.apache.kafka.streams.internals.ApiUtils;
@@ -414,7 +415,7 @@ public class InternalTopologyBuilder {
         return this;
     }
 
-    public final void addSource(final Topology.AutoOffsetReset offsetReset,
+    public final void addSource(final AutoOffsetReset offsetReset,
                                 final String name,
                                 final TimestampExtractor timestampExtractor,
                                 final Deserializer<?> keyDeserializer,
@@ -441,7 +442,7 @@ public class InternalTopologyBuilder {
         nodeGroups = null;
     }
 
-    public final void addSource(final Topology.AutoOffsetReset offsetReset,
+    public final void addSource(final AutoOffsetReset offsetReset,
                                 final String name,
                                 final TimestampExtractor timestampExtractor,
                                 final Deserializer<?> keyDeserializer,
@@ -887,7 +888,7 @@ public class InternalTopologyBuilder {
 
     private <T> void maybeAddToResetList(final Collection<T> earliestResets,
                                          final Collection<T> latestResets,
-                                         final Topology.AutoOffsetReset offsetReset,
+                                         final AutoOffsetReset offsetReset,
                                          final T item) {
         if (offsetReset != null) {
             switch (offsetReset) {
