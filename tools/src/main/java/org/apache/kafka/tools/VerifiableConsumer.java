@@ -577,7 +577,7 @@ public class VerifiableConsumer implements Closeable, OffsetCommitCallback, Cons
                 .type(Integer.class)
                 .metavar("TIMEOUT_MS")
                 .dest("sessionTimeout")
-                .help("Set the consumer's session timeout, note that session timeout cannot be set when group protocol is consumer");
+                .help("Set the consumer's session timeout, note that this configuration is not supported when group protocol is consumer");
 
         parser.addArgument("--verbose")
                 .action(storeTrue())
