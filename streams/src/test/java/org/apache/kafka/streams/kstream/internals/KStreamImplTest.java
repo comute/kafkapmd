@@ -49,18 +49,19 @@ import org.apache.kafka.streams.kstream.ValueJoinerWithKey;
 import org.apache.kafka.streams.kstream.ValueMapper;
 import org.apache.kafka.streams.kstream.ValueMapperWithKey;
 import org.apache.kafka.streams.processor.FailOnInvalidTimestamp;
-import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.TopicNameExtractor;
 import org.apache.kafka.streams.processor.api.ContextualFixedKeyProcessor;
-import org.apache.kafka.streams.processor.api.ContextualProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
+import org.apache.kafka.streams.processor.api.Processor;
+import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.ProcessorSupplier;
 import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.processor.internals.ProcessorTopology;
 import org.apache.kafka.streams.processor.internals.SourceNode;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
 import org.apache.kafka.streams.test.TestRecord;
 import org.apache.kafka.test.MockApiFixedKeyProcessorSupplier;
@@ -79,9 +80,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -1808,36 +1811,57 @@ public class KStreamImplTest {
     }
 
     @Test
-    public void shouldBindStateWithOldProcessor() {
+    public void shouldProcessWithProcessorAndState() {
         final Consumed<String, String> consumed = Consumed.with(Serdes.String(), Serdes.String());
 
         final StreamsBuilder builder = new StreamsBuilder();
 
         final String input = "input";
-        final String output = "output";
+
+        builder.addStateStore(Stores.keyValueStoreBuilder(
+            Stores.inMemoryKeyValueStore("sum"),
+            Serdes.String(),
+            Serdes.Integer()
+        ));
 
         builder.stream(input, consumed)
-            .process(() -> new ContextualProcessor<String, String, String, Integer>() {
+            .process(() -> new Processor<String, String, String, String>() {
+                private KeyValueStore<String, Integer> sumStore;
+
+                @Override
+                public void init(final ProcessorContext<String, String> context) {
+                    this.sumStore = context.getStateStore("sum");
+                }
+
                 @Override
                 public void process(final Record<String, String> record) {
-                    context().forward(record.withValue(record.value().length()));
+                    final String key = record.key();
+                    final String value = record.value();
+
+                    final Integer counter = sumStore.get(key);
+                    if (counter == null) {
+                        sumStore.putIfAbsent(key, value.length());
+                    } else {
+                        if (value == null) {
+                            sumStore.delete(key);
+                        } else {
+                            sumStore.put(key, counter + value.length());
+                        }
+                    }
                 }
-            }, Named.as("p"))
-            .to(output, Produced.valueSerde(Serdes.Integer()));
+            }, Named.as("p"), "sum");
 
         final String topologyDescription = builder.build().describe().toString();
 
         assertThat(
             topologyDescription,
-            equalTo("Topologies:\n" +
-                "   Sub-topology: 0\n" +
-                "    Source: KSTREAM-SOURCE-0000000000 (topics: [input])\n" +
-                "      --> p\n" +
-                "    Processor: p (stores: [])\n" +
-                "      --> KSTREAM-SINK-0000000001\n" +
-                "      <-- KSTREAM-SOURCE-0000000000\n" +
-                "    Sink: KSTREAM-SINK-0000000001 (topic: output)\n" +
-                "      <-- p\n\n")
+            equalTo("Topologies:\n"
+                + "   Sub-topology: 0\n"
+                + "    Source: KSTREAM-SOURCE-0000000000 (topics: [input])\n"
+                + "      --> p\n"
+                + "    Processor: p (stores: [sum])\n"
+                + "      --> none\n"
+                + "      <-- KSTREAM-SOURCE-0000000000\n\n")
         );
 
         try (final TopologyTestDriver driver = new TopologyTestDriver(builder.build(), props)) {
@@ -1847,11 +1871,93 @@ public class KStreamImplTest {
                     new StringSerializer(),
                     new StringSerializer()
                 );
-            final TestOutputTopic<String, Integer> outputTopic =
-                driver.createOutputTopic(
-                    output,
-                    new StringDeserializer(),
-                    new IntegerDeserializer()
+
+            inputTopic.pipeInput("A", "0", 5L);
+            inputTopic.pipeInput("B", "00", 100L);
+            inputTopic.pipeInput("C", "000", 0L);
+            inputTopic.pipeInput("D", "0000", 0L);
+            inputTopic.pipeInput("A", "00000", 10L);
+            inputTopic.pipeInput("A", "000000", 8L);
+
+            final KeyValueStore<String, Integer> sumStore = driver.getKeyValueStore("sum");
+            assertEquals(12, sumStore.get("A").intValue());
+            assertEquals(2, sumStore.get("B").intValue());
+            assertEquals(3, sumStore.get("C").intValue());
+            assertEquals(4, sumStore.get("D").intValue());
+        }
+    }
+
+    @Test
+    public void shouldBindStateWithProcessorSupplier() {
+        final Consumed<String, String> consumed = Consumed.with(Serdes.String(), Serdes.String());
+
+        final StreamsBuilder builder = new StreamsBuilder();
+
+        final String input = "input";
+
+        builder.stream(input, consumed)
+            .process(new ProcessorSupplier<String, String, String, String>() {
+
+                @Override
+                public Processor<String, String, String, String> get() {
+                    return new Processor<>() {
+                        private KeyValueStore<String, Integer> sumStore;
+
+                        @Override
+                        public void init(final ProcessorContext<String, String> context) {
+                            this.sumStore = context.getStateStore("sum");
+                        }
+
+                        @Override
+                        public void process(final Record<String, String> record) {
+                            final String key = record.key();
+                            final String value = record.value();
+
+                            final Integer counter = sumStore.get(key);
+                            if (counter == null) {
+                                sumStore.putIfAbsent(key, value.length());
+                            } else {
+                                if (value == null) {
+                                    sumStore.delete(key);
+                                } else {
+                                    sumStore.put(key, counter + value.length());
+                                }
+                            }
+                        }
+                    };
+                }
+
+                @Override
+                public Set<StoreBuilder<?>> stores() {
+                    final Set<StoreBuilder<?>> stores = new HashSet<>();
+                    stores.add(Stores.keyValueStoreBuilder(
+                        Stores.inMemoryKeyValueStore("sum"),
+                        Serdes.String(),
+                        Serdes.Integer()
+                    ));
+                    return stores;
+                }
+            }, Named.as("p"));
+
+        final String topologyDescription = builder.build().describe().toString();
+
+        assertThat(
+            topologyDescription,
+            equalTo("Topologies:\n"
+                + "   Sub-topology: 0\n"
+                + "    Source: KSTREAM-SOURCE-0000000000 (topics: [input])\n"
+                + "      --> p\n"
+                + "    Processor: p (stores: [sum])\n"
+                + "      --> none\n"
+                + "      <-- KSTREAM-SOURCE-0000000000\n\n")
+        );
+
+        try (final TopologyTestDriver driver = new TopologyTestDriver(builder.build(), props)) {
+            final TestInputTopic<String, String> inputTopic =
+                driver.createInputTopic(
+                    input,
+                    new StringSerializer(),
+                    new StringSerializer()
                 );
 
             inputTopic.pipeInput("A", "0", 5L);
@@ -1861,15 +1967,11 @@ public class KStreamImplTest {
             inputTopic.pipeInput("A", "00000", 10L);
             inputTopic.pipeInput("A", "000000", 8L);
 
-            final List<TestRecord<String, Integer>> outputExpectRecords = new ArrayList<>();
-            outputExpectRecords.add(new TestRecord<>("A", 1, Instant.ofEpochMilli(5L)));
-            outputExpectRecords.add(new TestRecord<>("B", 2, Instant.ofEpochMilli(100L)));
-            outputExpectRecords.add(new TestRecord<>("C", 3, Instant.ofEpochMilli(0L)));
-            outputExpectRecords.add(new TestRecord<>("D", 4, Instant.ofEpochMilli(0L)));
-            outputExpectRecords.add(new TestRecord<>("A", 5, Instant.ofEpochMilli(10L)));
-            outputExpectRecords.add(new TestRecord<>("A", 6, Instant.ofEpochMilli(8L)));
-
-            assertEquals(outputTopic.readRecordsToList(), outputExpectRecords);
+            final KeyValueStore<String, Integer> sumStore = driver.getKeyValueStore("sum");
+            assertEquals(12, sumStore.get("A").intValue());
+            assertEquals(2, sumStore.get("B").intValue());
+            assertEquals(3, sumStore.get("C").intValue());
+            assertEquals(4, sumStore.get("D").intValue());
         }
     }
 
