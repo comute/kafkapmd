@@ -40,7 +40,6 @@ public class RoundRobinPartitionerTest {
 
     @Test
     public void testRoundRobinWithUnavailablePartitions() {
-        // Update: Adjust test logic for consistent behavior with existing implementation
         List<PartitionInfo> partitions = asList(
                 new PartitionInfo("test", 1, null, NODES, NODES),
                 new PartitionInfo("test", 2, NODES[1], NODES, NODES),
@@ -50,8 +49,7 @@ public class RoundRobinPartitionerTest {
         Partitioner partitioner = new RoundRobinPartitioner();
         Cluster cluster = new Cluster("clusterId", asList(NODES[0], NODES[1], NODES[2]), partitions,
                 Collections.emptySet(), Collections.emptySet());
-
-        // Loop adjusted to match behavior of your implementation
+        
         for (int i = 1; i <= 100; i++) {
             int part = partitioner.partition("test", null, null, null, null, cluster);
             assertTrue(part == 0 || part == 2, "Should not choose unavailable partitions");
@@ -103,7 +101,6 @@ public class RoundRobinPartitionerTest {
     @SuppressWarnings("deprecation")
     @Test
     public void testRoundRobinWithNullKeyBytes() {
-        // Adjusted to align behavior with batch resets
         final String topicA = "topicA";
         final String topicB = "topicB";
 
@@ -137,7 +134,6 @@ public class RoundRobinPartitionerTest {
     @SuppressWarnings("deprecation")
     @Test
     public void testRoundRobinWithNullKeyBytesAndEvenPartitionCount() {
-        // Adjusted for consistent behavior
         final String topicA = "topicA";
         final String topicB = "topicB";
 
