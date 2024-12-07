@@ -649,8 +649,9 @@ public class VerifiableConsumer implements Closeable, OffsetCommitCallback, Cons
             if (groupRemoteAssignor != null)
                 consumerProps.put(ConsumerConfig.GROUP_REMOTE_ASSIGNOR_CONFIG, groupRemoteAssignor);
         } else {
-            // This means we're using the old consumer group protocol.
+            // This means we're using the CLASSIC consumer group protocol.
             consumerProps.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, res.getString("assignmentStrategy"));
+            consumerProps.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, Integer.toString(res.getInt("sessionTimeout")));
         }
 
         consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, res.getString("groupId"));
@@ -664,11 +665,6 @@ public class VerifiableConsumer implements Closeable, OffsetCommitCallback, Cons
 
         consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, useAutoCommit);
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, res.getString("resetPolicy"));
-
-        // session.timeout.ms cannot be set when group.protocol=CONSUMER
-        if (!groupProtocol.equalsIgnoreCase(GroupProtocol.CONSUMER.name)) {
-            consumerProps.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, Integer.toString(res.getInt("sessionTimeout")));
-        }
 
         StringDeserializer deserializer = new StringDeserializer();
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProps, deserializer, deserializer);
