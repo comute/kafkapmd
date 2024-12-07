@@ -581,7 +581,12 @@ public class Plugins {
                 break;
             case PLUGINS:
                 // Attempt to load with the plugin class loader, which uses the current classloader as a fallback
-                String classOrAlias = config.getClass(classPropertyName).getName();
+
+                // if the config specifies the class name, use it, otherwise use the default which we can get from config.getClass
+                String classOrAlias = config.originalsStrings().get(classPropertyName);
+                if (classOrAlias == null) {
+                    classOrAlias = config.getClass(classPropertyName).getName();
+                }
                 try {
                     klass = pluginClass(delegatingLoader, classOrAlias, basePluginClass, range);
                 } catch (ClassNotFoundException e) {
