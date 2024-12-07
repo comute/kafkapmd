@@ -49,7 +49,7 @@ class AutoOffsetResetTest {
     }
 
     @Test
-    void testNegativeDurationThrowsException() {
+    void shouldThrowExceptionIfDurationIsNegative() {
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
             () -> AutoOffsetReset.duration(Duration.ofSeconds(-1)),
