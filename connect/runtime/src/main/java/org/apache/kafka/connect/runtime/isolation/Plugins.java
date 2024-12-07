@@ -34,7 +34,7 @@ import org.apache.kafka.connect.storage.ConverterType;
 import org.apache.kafka.connect.storage.HeaderConverter;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.predicates.Predicate;
-import org.apache.kafka.connect.util.PluginVersionUtils;
+
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.slf4j.Logger;
@@ -564,7 +564,7 @@ public class Plugins {
         VersionRange range = null;
         if (version != null) {
             try {
-                range = PluginVersionUtils.connectorVersionRequirement(version);
+                range = PluginUtils.connectorVersionRequirement(version);
             } catch (InvalidVersionSpecificationException e) {
                 throw new ConnectException(String.format("Invalid version range for %s: %s", classPropertyName, version), e);
             }
