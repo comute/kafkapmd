@@ -278,7 +278,7 @@ public class Plugins {
         return delegatingLoader.loader(connectorClassOrAlias);
     }
 
-    public ClassLoader pluginLoader(String classOrAlias, VersionRange range) throws ClassNotFoundException, VersionedPluginLoadingException {
+    public ClassLoader pluginLoader(String classOrAlias, VersionRange range) {
         return delegatingLoader.loader(classOrAlias, range);
     }
 

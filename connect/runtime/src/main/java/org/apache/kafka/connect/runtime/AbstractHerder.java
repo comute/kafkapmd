@@ -34,7 +34,6 @@ import org.apache.kafka.connect.connector.policy.ConnectorClientConfigRequest;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.NotFoundException;
 import org.apache.kafka.connect.runtime.isolation.LoaderSwap;
-import org.apache.kafka.connect.runtime.isolation.PluginDesc;
 import org.apache.kafka.connect.runtime.isolation.PluginUtils;
 import org.apache.kafka.connect.runtime.isolation.Plugins;
 import org.apache.kafka.connect.runtime.isolation.VersionedPluginLoadingException;
@@ -67,7 +66,6 @@ import org.apache.kafka.connect.util.Stage;
 import org.apache.kafka.connect.util.TemporaryStage;
 
 import org.apache.log4j.Level;
-import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.slf4j.Logger;
@@ -91,10 +89,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
@@ -688,6 +682,10 @@ public abstract class AbstractHerder implements Herder, TaskStatus.Listener, Con
             }
         }
         String connType = connectorProps.get(ConnectorConfig.CONNECTOR_CLASS_CONFIG);
+        if (connType == null) {
+            throw new BadRequestException("Connector config " + connectorProps + " contains no connector type");
+        }
+
         VersionRange connVersion = null;
         Connector connector;
         ClassLoader connectorLoader;
@@ -698,10 +696,6 @@ public abstract class AbstractHerder implements Herder, TaskStatus.Listener, Con
         } catch (Exception e) {
             throw new BadRequestException(e.getMessage());
         }
-
-        if (connType == null)
-            throw new BadRequestException("Connector config " + connectorProps + " contains no connector type");
-
 
         try (LoaderSwap loaderSwap = plugins().withClassLoader(connectorLoader)) {
             log.info("Validating connector {}, version {}", connType, connector.version());

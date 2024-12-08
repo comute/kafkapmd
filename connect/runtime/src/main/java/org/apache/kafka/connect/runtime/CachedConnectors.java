@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class CachedConnectors {
 
-    private final static String LATEST_VERSION = "latest";
+    private static final String LATEST_VERSION = "latest";
 
     private final Map<String, Map<String, Connector>> connectors;
     private final Map<String, Exception> invalidConnectors;
