@@ -66,29 +66,44 @@ public class MirrorCheckpointTask extends SourceTask {
     private Set<String> consumerGroups;
     private ReplicationPolicy replicationPolicy;
     private OffsetSyncStore offsetSyncStore;
+    private OffsetSyncStore reverseOffsetSyncStore;
     private boolean stopping;
     private MirrorCheckpointMetrics metrics;
     private Scheduler scheduler;
     private Map<String, Map<TopicPartition, OffsetAndMetadata>> idleConsumerGroupsOffset;
     private CheckpointStore checkpointStore;
+    private TopicFilter reverseCheckpointingTopicFilter;
 
     public MirrorCheckpointTask() {}
 
     // for testing
     MirrorCheckpointTask(String sourceClusterAlias, String targetClusterAlias,
-            ReplicationPolicy replicationPolicy, OffsetSyncStore offsetSyncStore, Set<String> consumerGroups,
-            Map<String, Map<TopicPartition, OffsetAndMetadata>> idleConsumerGroupsOffset,
-            CheckpointStore checkpointStore) {
+                         ReplicationPolicy replicationPolicy, OffsetSyncStore offsetSyncStore,
+                         Set<String> consumerGroups,
+                         Map<String, Map<TopicPartition, OffsetAndMetadata>> idleConsumerGroupsOffset,
+                         CheckpointStore checkpointStore) {
+        this(sourceClusterAlias, targetClusterAlias, replicationPolicy, offsetSyncStore, null,
+                consumerGroups, idleConsumerGroupsOffset, checkpointStore, null);
+    }
+
+    // for testing
+    MirrorCheckpointTask(String sourceClusterAlias, String targetClusterAlias,
+                         ReplicationPolicy replicationPolicy, OffsetSyncStore offsetSyncStore,
+                         OffsetSyncStore reverseOffsetSyncStore, Set<String> consumerGroups,
+                         Map<String, Map<TopicPartition, OffsetAndMetadata>> idleConsumerGroupsOffset,
+                         CheckpointStore checkpointStore, TopicFilter reverseCheckpointingTopicFilter) {
         this.sourceClusterAlias = sourceClusterAlias;
         this.targetClusterAlias = targetClusterAlias;
         this.replicationPolicy = replicationPolicy;
         this.offsetSyncStore = offsetSyncStore;
+        this.reverseOffsetSyncStore = reverseOffsetSyncStore;
         this.consumerGroups = consumerGroups;
         this.idleConsumerGroupsOffset = idleConsumerGroupsOffset;
         this.checkpointStore = checkpointStore;
         this.topicFilter = topic -> true;
         this.interval = Duration.ofNanos(1);
         this.pollTimeout = Duration.ofNanos(1);
+        this.reverseCheckpointingTopicFilter = reverseCheckpointingTopicFilter;
     }
 
     @Override
@@ -104,6 +119,10 @@ public class MirrorCheckpointTask extends SourceTask {
         interval = config.emitCheckpointsInterval();
         pollTimeout = config.consumerPollTimeout();
         offsetSyncStore = new OffsetSyncStore(config);
+        if (config.reverseCheckpointingEnabled()) {
+            reverseOffsetSyncStore = new OffsetSyncStore(config, true);
+            reverseCheckpointingTopicFilter = config.reverseCheckpointingTopicFilter();
+        }
         sourceAdminClient = config.forwardingAdmin(config.sourceAdminConfig("checkpoint-source-admin"));
         targetAdminClient = config.forwardingAdmin(config.targetAdminConfig("checkpoint-target-admin"));
         metrics = config.metrics();
@@ -115,6 +134,9 @@ public class MirrorCheckpointTask extends SourceTask {
             // to avoid blocking task::start (until a task has completed starting it cannot be stopped)
             boolean checkpointsReadOk = checkpointStore.start();
             offsetSyncStore.start(!checkpointsReadOk);
+            if (reverseOffsetSyncStore != null) {
+                reverseOffsetSyncStore.start(!checkpointsReadOk);
+            }
             scheduler.scheduleRepeating(this::refreshIdleConsumerGroupOffset, config.syncGroupOffsetsInterval(),
                     "refreshing idle consumers group offsets at target cluster");
             scheduler.scheduleRepeatingDelayed(this::syncGroupOffset, config.syncGroupOffsetsInterval(),
@@ -136,6 +158,7 @@ public class MirrorCheckpointTask extends SourceTask {
         Utils.closeQuietly(topicFilter, "topic filter");
         Utils.closeQuietly(checkpointStore, "checkpoints store");
         Utils.closeQuietly(offsetSyncStore, "offset sync store");
+        Utils.closeQuietly(reverseOffsetSyncStore, "reverse offset sync store");
         Utils.closeQuietly(sourceAdminClient, "source admin client");
         Utils.closeQuietly(targetAdminClient, "target admin client");
         Utils.closeQuietly(metrics, "metrics");
@@ -193,13 +216,27 @@ public class MirrorCheckpointTask extends SourceTask {
 
     // for testing
     Map<TopicPartition, Checkpoint> checkpointsForGroup(Map<TopicPartition, OffsetAndMetadata> upstreamGroupOffsets, String group) {
-        return upstreamGroupOffsets.entrySet().stream()
+        Stream<Optional<Checkpoint>> checkpointStream = upstreamGroupOffsets.entrySet().stream()
             .filter(x -> shouldCheckpointTopic(x.getKey().topic())) // Only perform relevant checkpoints filtered by "topic filter"
-            .map(x -> checkpoint(group, x.getKey(), x.getValue()))
-            .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty)) // do not emit checkpoints for partitions that don't have offset-syncs
+            .map(x -> checkpoint(group, x.getKey(), x.getValue()));
+        if (reverseOffsetSyncStore != null) {
+            Stream<Optional<Checkpoint>> reverseCheckpointStream = upstreamGroupOffsets.entrySet().stream()
+                    .filter(x -> shouldReverseCheckpointTopic(x.getKey().topic()))
+                    .map(x -> reverseCheckpoint(group, x.getKey(), x.getValue()));
+            checkpointStream = Stream.concat(checkpointStream, reverseCheckpointStream);
+        }
+        return checkpointStream
+            .flatMap(Optional::stream) // do not emit checkpoints for partitions that don't have offset-syncs
             .filter(x -> x.downstreamOffset() >= 0)  // ignore offsets we cannot translate accurately
             .filter(this::checkpointIsMoreRecent) // do not emit checkpoints for partitions that have a later checkpoint
             .collect(Collectors.toMap(Checkpoint::topicPartition, Function.identity()));
+    }
+
+    private boolean shouldReverseCheckpointTopic(String topic) {
+        if (reverseCheckpointingTopicFilter != null) {
+            return reverseCheckpointingTopicFilter.shouldReplicateTopic(topic);
+        }
+        return targetClusterAlias.equals(replicationPolicy.topicSource(topic));
     }
 
     private boolean checkpointIsMoreRecent(Checkpoint checkpoint) {
@@ -248,10 +285,26 @@ public class MirrorCheckpointTask extends SourceTask {
         if (offsetAndMetadata != null) {
             long upstreamOffset = offsetAndMetadata.offset();
             OptionalLong downstreamOffset =
-                offsetSyncStore.translateDownstream(group, topicPartition, upstreamOffset);
+                offsetSyncStore.translate(group, topicPartition, upstreamOffset);
             if (downstreamOffset.isPresent()) {
                 return Optional.of(new Checkpoint(group, renameTopicPartition(topicPartition),
                     upstreamOffset, downstreamOffset.getAsLong(), offsetAndMetadata.metadata()));
+            }
+        }
+        return Optional.empty();
+    }
+
+    Optional<Checkpoint> reverseCheckpoint(String group, TopicPartition topicPartition,
+                                           OffsetAndMetadata offsetAndMetadata) {
+        if (offsetAndMetadata != null) {
+            long upstreamOffset = offsetAndMetadata.offset();
+            String upstreamTopic = replicationPolicy.upstreamTopic(topicPartition.topic());
+            TopicPartition upstreamTopicPartition = new TopicPartition(upstreamTopic, topicPartition.partition());
+            OptionalLong downstreamOffset =
+                    reverseOffsetSyncStore.translate(group, upstreamTopicPartition, upstreamOffset);
+            if (downstreamOffset.isPresent()) {
+                return Optional.of(new Checkpoint(group, upstreamTopicPartition,
+                        upstreamOffset, downstreamOffset.getAsLong(), offsetAndMetadata.metadata()));
             }
         }
         return Optional.empty();
@@ -267,15 +320,9 @@ public class MirrorCheckpointTask extends SourceTask {
     }
 
     TopicPartition renameTopicPartition(TopicPartition upstreamTopicPartition) {
-        if (targetClusterAlias.equals(replicationPolicy.topicSource(upstreamTopicPartition.topic()))) {
-            // this topic came from the target cluster, so we rename like us-west.topic1 -> topic1
-            return new TopicPartition(replicationPolicy.originalTopic(upstreamTopicPartition.topic()),
-                upstreamTopicPartition.partition());
-        } else {
-            // rename like topic1 -> us-west.topic1
-            return new TopicPartition(replicationPolicy.formatRemoteTopic(sourceClusterAlias,
-                upstreamTopicPartition.topic()), upstreamTopicPartition.partition());
-        }
+        // rename like topic1 -> us-west.topic1
+        return new TopicPartition(replicationPolicy.formatRemoteTopic(sourceClusterAlias,
+            upstreamTopicPartition.topic()), upstreamTopicPartition.partition());
     }
 
     boolean shouldCheckpointTopic(String topic) {
@@ -373,7 +420,7 @@ public class MirrorCheckpointTask extends SourceTask {
                 offsetToSync.put(topicPartition, convertedOffset);
             }
 
-            if (offsetToSync.size() == 0) {
+            if (offsetToSync.isEmpty()) {
                 log.trace("skip syncing the offset for consumer group: {}", consumerGroupId);
                 continue;
             }
