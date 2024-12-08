@@ -35,6 +35,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.NotFoundException;
 import org.apache.kafka.connect.runtime.isolation.LoaderSwap;
 import org.apache.kafka.connect.runtime.isolation.PluginDesc;
+import org.apache.kafka.connect.runtime.isolation.PluginUtils;
 import org.apache.kafka.connect.runtime.isolation.Plugins;
 import org.apache.kafka.connect.runtime.isolation.VersionedPluginLoadingException;
 import org.apache.kafka.connect.runtime.rest.entities.ActiveTopicsInfo;
@@ -443,7 +444,7 @@ public abstract class AbstractHerder implements Herder, TaskStatus.Listener, Con
         T pluginInstance;
         String stageDescription = "instantiating the connector's " + pluginName + " for validation";
         try (TemporaryStage stage = reportStage.apply(stageDescription)) {
-            VersionRange range = PluginVersionUtils.connectorVersionRequirement(pluginVersion);
+            VersionRange range = PluginUtils.connectorVersionRequirement(pluginVersion);
             pluginInstance = (T) plugins().newPlugin(pluginClass, pluginInterface, range);
         } catch (VersionedPluginLoadingException e) {
             log.error("Failed to load {} class {} with version {}: {}", pluginName, pluginClass, pluginVersion, e);
@@ -665,7 +666,7 @@ public abstract class AbstractHerder implements Herder, TaskStatus.Listener, Con
         Connector connector;
         ClassLoader connectorLoader;
         try {
-            connVersion = PluginVersionUtils.connectorVersionRequirement(connectorProps.get(CONNECTOR_VERSION));
+            connVersion = PluginUtils.connectorVersionRequirement(connectorProps.get(CONNECTOR_VERSION));
             connector = getConnector(connType, connVersion);
             connectorLoader = plugins().pluginLoader(connType, connVersion);
         } catch (Exception e) {
@@ -984,7 +985,7 @@ public abstract class AbstractHerder implements Herder, TaskStatus.Listener, Con
 
         if (required != null) {
             try {
-                final VersionRange requiredVersionRange = PluginVersionUtils.connectorVersionRequirement(required.toString());
+                final VersionRange requiredVersionRange = PluginUtils.connectorVersionRequirement(required.toString());
                 connectors.computeIfAbsent(required, k -> plugins().newConnector(connClass, requiredVersionRange));
             } catch (InvalidVersionSpecificationException e) {
                 // this should not happen as the versions here are specified in the connectors and should already be
@@ -1020,7 +1021,7 @@ public abstract class AbstractHerder implements Herder, TaskStatus.Listener, Con
             return ConnectorType.UNKNOWN;
         }
         try {
-            VersionRange range = PluginVersionUtils.connectorVersionRequirement(connConfig.get(CONNECTOR_VERSION));
+            VersionRange range = PluginUtils.connectorVersionRequirement(connConfig.get(CONNECTOR_VERSION));
             return ConnectorType.from(getConnector(connClass, range).getClass());
         } catch (ConnectException | InvalidVersionSpecificationException e) {
             log.warn("Unable to retrieve connector type", e);

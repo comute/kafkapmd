@@ -29,6 +29,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.runtime.errors.ToleranceType;
 import org.apache.kafka.connect.runtime.isolation.LoaderSwap;
 import org.apache.kafka.connect.runtime.isolation.PluginDesc;
+import org.apache.kafka.connect.runtime.isolation.PluginUtils;
 import org.apache.kafka.connect.runtime.isolation.Plugins;
 import org.apache.kafka.connect.runtime.isolation.PluginsRecommenders;
 import org.apache.kafka.connect.runtime.isolation.VersionedPluginLoadingException;
@@ -39,7 +40,6 @@ import org.apache.kafka.connect.transforms.predicates.Predicate;
 import org.apache.kafka.connect.util.ConcreteSubClassValidator;
 import org.apache.kafka.connect.util.InstantiableClassValidator;
 
-import org.apache.kafka.connect.util.PluginVersionUtils;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.slf4j.Logger;
@@ -86,7 +86,7 @@ public class ConnectorConfig extends AbstractConfig {
     private static final String CONNECTOR_VERSION_DEFAULT = null;
     private static final String CONNECTOR_VERSION_DOC = "Version of the connector.";
     private static final String CONNECTOR_VERSION_DISPLAY = "Connector version";
-    private static final ConfigDef.Validator CONNECTOR_VERSION_VALIDATOR = new PluginVersionUtils.PluginVersionValidator();
+    private static final ConfigDef.Validator CONNECTOR_VERSION_VALIDATOR = new PluginVersionValidator();
 
     public static final String KEY_CONVERTER_CLASS_CONFIG = WorkerConfig.KEY_CONVERTER_CLASS_CONFIG;
     public static final String KEY_CONVERTER_CLASS_DOC = WorkerConfig.KEY_CONVERTER_CLASS_DOC;
@@ -100,7 +100,7 @@ public class ConnectorConfig extends AbstractConfig {
     private static final String KEY_CONVERTER_VERSION_DEFAULT = null;
     private static final String KEY_CONVERTER_VERSION_DOC = "Version of the key converter.";
     private static final String KEY_CONVERTER_VERSION_DISPLAY = "Key converter version";
-    private static final ConfigDef.Validator KEY_CONVERTER_VERSION_VALIDATOR = new PluginVersionUtils.PluginVersionValidator();
+    private static final ConfigDef.Validator KEY_CONVERTER_VERSION_VALIDATOR = new PluginVersionValidator();
 
 
     public static final String VALUE_CONVERTER_CLASS_CONFIG = WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG;
@@ -115,7 +115,7 @@ public class ConnectorConfig extends AbstractConfig {
     private static final String VALUE_CONVERTER_VERSION_DEFAULT = null;
     private static final String VALUE_CONVERTER_VERSION_DOC = "Version of the value converter.";
     private static final String VALUE_CONVERTER_VERSION_DISPLAY = "Value converter version";
-    private static final ConfigDef.Validator VALUE_CONVERTER_VERSION_VALIDATOR = new PluginVersionUtils.PluginVersionValidator();
+    private static final ConfigDef.Validator VALUE_CONVERTER_VERSION_VALIDATOR = new PluginVersionValidator();
 
     public static final String HEADER_CONVERTER_CLASS_CONFIG = WorkerConfig.HEADER_CONVERTER_CLASS_CONFIG;
     public static final String HEADER_CONVERTER_CLASS_DOC = WorkerConfig.HEADER_CONVERTER_CLASS_DOC;
@@ -132,7 +132,7 @@ public class ConnectorConfig extends AbstractConfig {
     private static final String HEADER_CONVERTER_VERSION_DEFAULT = null;
     private static final String HEADER_CONVERTER_VERSION_DOC = "Version of the header converter.";
     private static final String HEADER_CONVERTER_VERSION_DISPLAY = "Header converter version";
-    private static final ConfigDef.Validator HEADER_CONVERTER_VERSION_VALIDATOR = new PluginVersionUtils.PluginVersionValidator();
+    private static final ConfigDef.Validator HEADER_CONVERTER_VERSION_VALIDATOR = new PluginVersionValidator();
 
     public static final String TASKS_MAX_CONFIG = "tasks.max";
     private static final String TASKS_MAX_DOC = "Maximum number of tasks to use for this connector.";
@@ -281,7 +281,7 @@ public class ConnectorConfig extends AbstractConfig {
         ConverterDefaults headerConverterDefaults = converterDefaults(plugins, HEADER_CONVERTER_CLASS_CONFIG,
                 WorkerConfig.HEADER_CONVERTER_CLASS_CONFIG, WorkerConfig.HEADER_CONVERTER_VERSION, connProps, workerProps, HeaderConverter.class);
         return configDef(plugins.latestVersion(connProps.get(ConnectorConfig.CONNECTOR_CLASS_CONFIG)),
-                keyConverterDefaults, valueConverterDefaults, headerConverterDefaults, plugins.pluginsRecommenders());
+                keyConverterDefaults, valueConverterDefaults, headerConverterDefaults, plugins.recommender());
     }
 
     public static ConfigDef enrichedConfigDef(Plugins plugins, String connectorClass) {
@@ -531,17 +531,16 @@ public class ConnectorConfig extends AbstractConfig {
         ));
     }
 
+    @SuppressWarnings("unchecked")
     private static <T> String fetchPluginVersion(Plugins plugins, String connectorClass, String connectorVersion, String pluginName, Class<T> pluginClass) {
         if (pluginName == null) {
             return null;
         }
         try {
-            VersionRange range = PluginVersionUtils.connectorVersionRequirement(connectorVersion);
+            VersionRange range = PluginUtils.connectorVersionRequirement(connectorVersion);
             ClassLoader connectorLoader = plugins.pluginLoader(connectorClass, range);
             try(LoaderSwap loaderSwap = plugins.withClassLoader(connectorLoader)) {
-                // this will load using the connector classloader, and then delegate to delegating classloader if not found
-                // this will ultimately get the latest version of the plugin if a different version is not packaged with the connector
-                T plugin = Utils.newInstance(pluginName, pluginClass);
+                T plugin = (T) plugins.newPlugin(pluginName, pluginClass, null);
                 if (plugin instanceof Versioned) {
                     return ((Versioned) plugin).version();
                 }
@@ -735,5 +734,18 @@ public class ConnectorConfig extends AbstractConfig {
     private static class ConverterDefaults {
         private String type = null;
         private String version = null;
+    }
+
+    public static class PluginVersionValidator implements ConfigDef.Validator {
+
+        @Override
+        public void ensureValid(String name, Object value) {
+
+            try {
+                PluginUtils.connectorVersionRequirement((String) value);
+            } catch (InvalidVersionSpecificationException e) {
+                throw new ConfigException(name, value, e.getMessage());
+            }
+        }
     }
 }

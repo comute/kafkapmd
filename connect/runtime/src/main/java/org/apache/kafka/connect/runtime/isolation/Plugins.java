@@ -357,6 +357,10 @@ public class Plugins {
         return plugins;
     }
 
+    public PluginsRecommenders recommender() {
+        return new PluginsRecommenders(this);
+    }
+
     public Object newPlugin(String classOrAlias) throws ClassNotFoundException {
         Class<?> klass = pluginClass(delegatingLoader, classOrAlias, Object.class);
         return newPlugin(klass);
@@ -365,6 +369,13 @@ public class Plugins {
     public Object newPlugin(String classOrAlias, VersionRange range) throws VersionedPluginLoadingException, ClassNotFoundException {
         Class<?> klass = pluginClass(delegatingLoader, classOrAlias, Object.class, range);
         return newPlugin(klass);
+    }
+
+    public <T> Object newPlugin(String classOrAlias, Class<T> baseClass, VersionRange range) throws ClassNotFoundException {
+        if (range == null) {
+            return Utils.newInstance(classOrAlias, baseClass);
+        }
+        return  newPlugin(classOrAlias, range);
     }
 
     public Connector newConnector(String connectorClassOrAlias) {

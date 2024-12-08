@@ -20,6 +20,7 @@ import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.runtime.Herder;
 import org.apache.kafka.connect.runtime.isolation.PluginDesc;
 import org.apache.kafka.connect.runtime.isolation.PluginType;
+import org.apache.kafka.connect.runtime.isolation.PluginUtils;
 import org.apache.kafka.connect.runtime.rest.RestRequestTimeout;
 import org.apache.kafka.connect.runtime.rest.entities.ConfigInfos;
 import org.apache.kafka.connect.runtime.rest.entities.ConfigKeyInfo;
@@ -159,7 +160,7 @@ public class ConnectorPluginsResource {
 
         VersionRange range = null;
         try {
-            range = PluginVersionUtils.connectorVersionRequirement(version);
+            range = PluginUtils.connectorVersionRequirement(version);
         } catch (InvalidVersionSpecificationException e) {
             throw new BadRequestException("Invalid version specification: " + version);
         }

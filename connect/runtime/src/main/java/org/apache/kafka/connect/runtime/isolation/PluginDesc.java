@@ -61,14 +61,10 @@ public class PluginDesc<T> implements Comparable<PluginDesc<?>> {
                 '}';
     }
     @JsonIgnore
-    DefaultArtifactVersion encodedVersion() {
-        return encodedVersion;
-    }
-
-    @JsonIgnore
     public DefaultArtifactVersion encodedVersion() {
         return encodedVersion;
     }
+
 
     public Class<? extends T> pluginClass() {
         return klass;
