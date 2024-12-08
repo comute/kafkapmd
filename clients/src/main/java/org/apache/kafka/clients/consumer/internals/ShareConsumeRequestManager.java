@@ -991,7 +991,6 @@ public class ShareConsumeRequestManager implements RequestManager, MemberStateLi
 
             ShareAcknowledgeRequest.Builder requestBuilder = sessionHandler.newShareAcknowledgeBuilder(groupId, fetchConfig);
 
-            log.trace("Building acknowledgements to send : {}", finalAcknowledgementsToSend);
             isProcessed = false;
 
             if (requestBuilder == null) {
@@ -1000,6 +999,8 @@ public class ShareConsumeRequestManager implements RequestManager, MemberStateLi
             } else {
                 Node nodeToSend = metadata.fetch().nodeById(nodeId);
                 nodesWithPendingRequests.add(nodeId);
+
+                log.trace("Building acknowledgements to send : {}", finalAcknowledgementsToSend);
 
                 inFlightAcknowledgements.putAll(finalAcknowledgementsToSend);
                 if (incompleteAcknowledgements.isEmpty()) {
