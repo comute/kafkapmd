@@ -17,10 +17,15 @@
 package kafka.clients.consumer;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.GroupProtocol;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.internals.AbstractHeartbeatRequestManager;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.UnsupportedVersionException;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.test.TestUtils;
 import org.apache.kafka.common.test.api.ClusterConfigProperty;
@@ -32,11 +37,13 @@ import org.apache.kafka.common.test.api.ClusterTests;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 @ExtendWith(ClusterTestExtensions.class)
-public class AsyncKafkaConsumerIntegrationTest {
+public class ConsumerIntegrationTest {
 
     @ClusterTests({
         @ClusterTest(serverProperties = {
@@ -68,6 +75,54 @@ public class AsyncKafkaConsumerIntegrationTest {
                     return e.getMessage().equals(AbstractHeartbeatRequestManager.CONSUMER_PROTOCOL_NOT_SUPPORTED_MSG);
                 }
             }, "Should get UnsupportedVersionException and how to revert to classic protocol");
+        }
+    }
+
+    @ClusterTest(serverProperties = {
+        @ClusterConfigProperty(key = "offsets.topic.num.partitions", value = "1"),
+        @ClusterConfigProperty(key = "offsets.topic.replication.factor", value = "1"),
+    })
+    public void testFetchPartitionsAfterFailedListenerWithGroupProtocolClassic(ClusterInstance clusterInstance)
+            throws InterruptedException {
+        testFetchPartitionsAfterFailedListener(clusterInstance, GroupProtocol.CLASSIC);
+    }
+
+    @ClusterTest(serverProperties = {
+        @ClusterConfigProperty(key = "offsets.topic.num.partitions", value = "1"),
+        @ClusterConfigProperty(key = "offsets.topic.replication.factor", value = "1"),
+    })
+    public void testFetchPartitionsAfterFailedListenerWithGroupProtocolConsumer(ClusterInstance clusterInstance)
+            throws InterruptedException {
+        testFetchPartitionsAfterFailedListener(clusterInstance, GroupProtocol.CONSUMER);
+    }
+
+    private static void testFetchPartitionsAfterFailedListener(ClusterInstance clusterInstance, GroupProtocol groupProtocol)
+            throws InterruptedException {
+        var topic = "topic";
+        try (var producer = clusterInstance.producer(Map.of(
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class))) {
+            producer.send(new ProducerRecord<>(topic, "key".getBytes(), "value".getBytes()));
+        }
+
+        try (var consumer = clusterInstance.consumer(Map.of(
+                ConsumerConfig.GROUP_PROTOCOL_CONFIG, groupProtocol.name()))) {
+            consumer.subscribe(List.of(topic), new ConsumerRebalanceListener() {
+                private int count = 0;
+                @Override
+                public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+                }
+
+                @Override
+                public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+                    count++;
+                    if (count == 1) throw new IllegalArgumentException("temporary error");
+                }
+            });
+
+            TestUtils.waitForCondition(() -> consumer.poll(Duration.ofSeconds(1)).count() == 1,
+                    5000,
+                    "failed to poll data");
         }
     }
 }
