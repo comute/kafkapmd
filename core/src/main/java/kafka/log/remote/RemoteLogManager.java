@@ -17,7 +17,6 @@
 package kafka.log.remote;
 
 import kafka.cluster.Partition;
-import kafka.log.AsyncOffsetReadFutureHolder;
 import kafka.log.UnifiedLog;
 import kafka.server.DelayedRemoteListOffsets;
 
@@ -86,6 +85,7 @@ import org.apache.kafka.storage.internals.log.RemoteStorageFetchInfo;
 import org.apache.kafka.storage.internals.log.RemoteStorageThreadPool;
 import org.apache.kafka.storage.internals.log.TransactionIndex;
 import org.apache.kafka.storage.internals.log.TxnIndexSearchResult;
+import org.apache.kafka.storage.log.AsyncOffsetReadFutureHolder;
 import org.apache.kafka.storage.log.metrics.BrokerTopicStats;
 
 import com.yammer.metrics.core.Timer;
