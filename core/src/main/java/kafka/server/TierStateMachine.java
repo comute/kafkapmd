@@ -230,7 +230,7 @@ public class TierStateMachine {
 
         RemoteLogSegmentMetadata remoteLogSegmentMetadata = rlm.fetchRemoteLogSegmentMetadata(topicPartition, targetEpoch, previousOffsetToLeaderLocalLogStartOffset)
                 .orElseThrow(() -> buildRemoteStorageException(topicPartition, targetEpoch, currentLeaderEpoch,
-                        leaderLocalLogStartOffset, previousOffsetToLeaderLocalLogStartOffset));
+                        leaderLocalLogStartOffset, leaderLogStartOffset));
 
 
         // Build leader epoch cache, producer snapshots until remoteLogSegmentMetadata.endOffset() and start
