@@ -372,28 +372,18 @@ public class SharePartition {
         log.debug("Maybe initialize share partition: {}-{}", groupId, topicIdPartition);
         // Check if the share partition is already initialized.
         try {
-            if (initializedOrThrowException()) {
-                return CompletableFuture.completedFuture(null);
-            }
+            if (initializedOrThrowException()) return CompletableFuture.completedFuture(null);
         } catch (Exception e) {
             return CompletableFuture.failedFuture(e);
         }
 
         // If code reaches here then the share partition is not initialized. Initialize the share partition.
         // All the pending requests should wait to get completed before the share partition is initialized.
-        // Attain lock to avoid any concurrent requests to be processed.
-        lock.writeLock().lock();
+        // Attain lock while updating the state to avoid any concurrent requests to be processed.
         try {
-            // Re-check the state to verify if previous requests has already initialized the share partition.
-            if (initializedOrThrowException()) {
-                return CompletableFuture.completedFuture(null);
-            }
-            // Update state to initializing to avoid any concurrent requests to be processed.
-            partitionState = SharePartitionState.INITIALIZING;
+            if (!emptyToInitialState()) return CompletableFuture.completedFuture(null);
         } catch (Exception e) {
             return CompletableFuture.failedFuture(e);
-        } finally {
-            lock.writeLock().unlock();
         }
 
         // The share partition is not initialized, hence try to initialize it. There shall be only one
@@ -448,12 +438,7 @@ public class SharePartition {
                     return;
                 }
 
-                try {
-                    startOffset = startOffsetDuringInitialization(partitionData.startOffset());
-                } catch (Exception e) {
-                    throwable = e;
-                    return;
-                }
+                startOffset = startOffsetDuringInitialization(partitionData.startOffset());
                 stateEpoch = partitionData.stateEpoch();
 
                 List<PersisterStateBatch> stateBatches = partitionData.stateBatches();
@@ -483,6 +468,8 @@ public class SharePartition {
                 }
                 // Set the partition state to Active and complete the future.
                 partitionState = SharePartitionState.ACTIVE;
+            } catch (Exception e) {
+                throwable = e;
             } finally {
                 boolean isFailed = throwable != null;
                 if (isFailed) {
@@ -1158,6 +1145,17 @@ public class SharePartition {
 
     private boolean stateNotActive() {
         return  partitionState() != SharePartitionState.ACTIVE;
+    }
+
+    private boolean emptyToInitialState() {
+        lock.writeLock().lock();
+        try {
+            if (initializedOrThrowException()) return false;
+            partitionState = SharePartitionState.INITIALIZING;
+            return true;
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     private boolean initializedOrThrowException() {
