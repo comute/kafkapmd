@@ -151,7 +151,7 @@ public abstract class AbstractHerder implements Herder, TaskStatus.Listener, Con
     private final Time time;
     protected final Loggers loggers;
 
-    private final ConcurrentMap<String, SortedMap<ArtifactVersion, Connector>> tempConnectors = new ConcurrentHashMap<>();
+    private final CachedConnectors cachedConnectors;
 
     public AbstractHerder(Worker worker,
                           String workerId,
@@ -170,6 +170,7 @@ public abstract class AbstractHerder implements Herder, TaskStatus.Listener, Con
         this.connectorExecutor = Executors.newCachedThreadPool();
         this.time = time;
         this.loggers = new Loggers(time);
+        this.cachedConnectors = new CachedConnectors(worker.getPlugins());
     }
 
     @Override
@@ -692,7 +693,7 @@ public abstract class AbstractHerder implements Herder, TaskStatus.Listener, Con
         ClassLoader connectorLoader;
         try {
             connVersion = PluginUtils.connectorVersionRequirement(connectorProps.get(CONNECTOR_VERSION));
-            connector = getConnector(connType, connVersion);
+            connector = cachedConnectors.getConnector(connType, connVersion);
             connectorLoader = plugins().pluginLoader(connType, connVersion);
         } catch (Exception e) {
             throw new BadRequestException(e.getMessage());
@@ -990,47 +991,6 @@ public abstract class AbstractHerder implements Herder, TaskStatus.Listener, Con
         return new ConfigValueInfo(configValue.name(), value, recommendedValues, configValue.errorMessages(), configValue.visible());
     }
 
-    protected Connector getConnector(String connClass, VersionRange range) {
-
-        SortedMap<ArtifactVersion, Connector> connectors = tempConnectors.computeIfAbsent(connClass, k -> {
-            SortedMap<ArtifactVersion, Connector> inner = Collections.synchronizedSortedMap(new TreeMap<>());
-            for (PluginDesc<SourceConnector> desc: plugins().sourceConnectors(connClass)) {
-                inner.put(desc.encodedVersion(), null);
-            }
-            for (PluginDesc<SinkConnector> desc: plugins().sinkConnectors(connClass)) {
-                inner.put(desc.encodedVersion(), null);
-            }
-            return inner;
-        });
-
-        ArtifactVersion required = connectors.lastKey();
-        if (range != null) {
-            required = range.matchVersion(new ArrayList<>(connectors.keySet()));
-        }
-
-        if (required != null) {
-            try {
-                final VersionRange requiredVersionRange = PluginUtils.connectorVersionRequirement(required.toString());
-                connectors.computeIfAbsent(required, k -> plugins().newConnector(connClass, requiredVersionRange));
-            } catch (InvalidVersionSpecificationException e) {
-                // this should not happen as the versions here are specified in the connectors and should already be
-                // validated during plugin loading
-            }
-        } else {
-            // since the connectors map already contains all the possible version, if no version match is found
-            // we should throw an exception. To keep things consistent the error we get should be the same as
-            // what the plugins interface returns if we try to load a connector version that is not available
-            // hence we call the following method which will throw the appropriate exception
-            plugins().newConnector(connClass, range);
-        }
-
-        return connectors.get(required);
-    }
-
-    protected Connector getConnector(String connType) {
-        return getConnector(connType, null);
-    }
-
     /**
      * Retrieves ConnectorType for the class specified in the connector config
      * @param connConfig the connector config, may be null
@@ -1047,8 +1007,8 @@ public abstract class AbstractHerder implements Herder, TaskStatus.Listener, Con
         }
         try {
             VersionRange range = PluginUtils.connectorVersionRequirement(connConfig.get(CONNECTOR_VERSION));
-            return ConnectorType.from(getConnector(connClass, range).getClass());
-        } catch (ConnectException | InvalidVersionSpecificationException e) {
+            return ConnectorType.from(cachedConnectors.getConnector(connClass, range).getClass());
+        } catch (Exception e) {
             log.warn("Unable to retrieve connector type", e);
             return ConnectorType.UNKNOWN;
         }
