@@ -284,11 +284,12 @@ public class ShareCoordinatorService implements ShareCoordinator {
             ShareCoordinatorShard::lastRedundantOffset
         ).whenComplete((result, exception) -> {
             if (exception != null) {
+                log.debug("Last redundant offset for tp {} lookup threw an error.", tp, exception);
                 Errors error = Errors.forException(exception);
                 // These errors might result from partition metadata not loaded
                 // or shard re-election. Will cause unnecessary noise, hence not logging
                 if (!(error.equals(Errors.COORDINATOR_LOAD_IN_PROGRESS) || error.equals(Errors.NOT_COORDINATOR))) {
-                    log.error("Last redundant offset lookup threw an error.", exception);
+                    log.error("Last redundant offset lookup for tp {} threw an error.", tp, exception);
                 }
                 fut.complete(null);
                 return;
@@ -305,9 +306,13 @@ public class ShareCoordinatorService implements ShareCoordinator {
                 log.info("Pruning records in {} till offset {}.", tp, off);
                 writer.deleteRecords(tp, off)
                     .whenComplete((res, exp) -> {
+                        if (exp != null) {
+                            log.debug("Exception while deleting records in {} till offset {}.", tp, off, exp);
+                        }
                         fut.complete(null);
                     });
             } else {
+                log.debug("No offset value for tp {} found.", tp);
                 fut.complete(null);
             }
         });
