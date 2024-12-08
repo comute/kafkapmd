@@ -45,7 +45,14 @@ import org.apache.maven.artifact.versioning.VersionRange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.apache.kafka.common.config.ConfigDef.NonEmptyStringWithoutControlChars.nonEmptyStringWithoutControlChars;
@@ -212,8 +219,8 @@ public class ConnectorConfig extends AbstractConfig {
     public static final String CONNECTOR_CLIENT_ADMIN_OVERRIDES_PREFIX = "admin.override.";
     public static final String PREDICATES_PREFIX = "predicates.";
 
-    private static final PluginsRecommenders emptyRecommender = new PluginsRecommenders();
-    private static final ConverterDefaults emptyDefaults = new ConverterDefaults();
+    private static final PluginsRecommenders EMPTY_RECOMMENDER = new PluginsRecommenders();
+    private static final ConverterDefaults CONVERTER_DEFAULTS = new ConverterDefaults();
 
     private final ConnectorConfig.EnrichedConnectorConfig enrichedConfig;
 
@@ -269,7 +276,7 @@ public class ConnectorConfig extends AbstractConfig {
     }
 
     public static ConfigDef configDef() {
-        return configDef(null, emptyDefaults, emptyDefaults, emptyDefaults, emptyRecommender);
+        return configDef(null, CONVERTER_DEFAULTS, CONVERTER_DEFAULTS, CONVERTER_DEFAULTS, EMPTY_RECOMMENDER);
     }
 
     // ConfigDef with additional defaults and recommenders
@@ -285,7 +292,7 @@ public class ConnectorConfig extends AbstractConfig {
     }
 
     public static ConfigDef enrichedConfigDef(Plugins plugins, String connectorClass) {
-        return configDef(plugins.latestVersion(connectorClass), emptyDefaults, emptyDefaults, emptyDefaults, emptyRecommender);
+        return configDef(plugins.latestVersion(connectorClass), CONVERTER_DEFAULTS, CONVERTER_DEFAULTS, CONVERTER_DEFAULTS, EMPTY_RECOMMENDER);
     }
 
     private static ConfigDef.CompositeValidator aliasValidator(String kind) {
@@ -539,7 +546,7 @@ public class ConnectorConfig extends AbstractConfig {
         try {
             VersionRange range = PluginUtils.connectorVersionRequirement(connectorVersion);
             ClassLoader connectorLoader = plugins.pluginLoader(connectorClass, range);
-            try(LoaderSwap loaderSwap = plugins.withClassLoader(connectorLoader)) {
+            try (LoaderSwap loaderSwap = plugins.withClassLoader(connectorLoader)) {
                 T plugin = (T) plugins.newPlugin(pluginName, pluginClass, null);
                 if (plugin instanceof Versioned) {
                     return ((Versioned) plugin).version();
