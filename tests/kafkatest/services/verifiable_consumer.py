@@ -251,8 +251,6 @@ class VerifiableConsumer(KafkaPathResolverMixin, VerifiableClientMixin, Backgrou
         self.session_timeout_sec = session_timeout_sec
         self.enable_autocommit = enable_autocommit
         self.assignment_strategy = assignment_strategy
-        self.group_protocol = group_protocol
-        self.group_remote_assignor = group_remote_assignor
         self.prop_file = ""
         self.stop_timeout_sec = stop_timeout_sec
         self.on_record_consumed = on_record_consumed
@@ -420,8 +418,7 @@ class VerifiableConsumer(KafkaPathResolverMixin, VerifiableClientMixin, Backgrou
         cmd += " --reset-policy %s --group-id %s --topic %s" % \
                 (self.reset_policy, self.group_id, self.topic)
 
-        # session timeout is not supported when using CONSUMER group protocol
-        if self.session_timeout_sec > 0 and self.is_consumer_group_protocol_enabled():
+        if self.session_timeout_sec > 0:
             cmd += " --session-timeout %s" % self.session_timeout_sec*1000
 
         if self.max_messages > 0:
