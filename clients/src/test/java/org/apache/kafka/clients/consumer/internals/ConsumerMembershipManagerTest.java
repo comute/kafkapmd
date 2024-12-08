@@ -1897,7 +1897,7 @@ public class ConsumerMembershipManagerTest {
     }
 
     @Test
-    public void testAddedPartitionsNotEnabledAfterFailedOnPartitionsAssignedCallback() {
+    public void testAddedPartitionsEnabledAfterFailedOnPartitionsAssignedCallback() {
         ConsumerMembershipManager membershipManager = createMembershipManagerJoiningGroup();
         String topicName = "topic1";
         ConsumerRebalanceListenerInvoker invoker = consumerRebalanceListenerInvoker();
@@ -1924,7 +1924,7 @@ public class ConsumerMembershipManagerTest {
             addedPartitions,
             true
         );
-        verify(subscriptionState, never()).enablePartitionsAwaitingCallback(any());
+        verify(subscriptionState).enablePartitionsAwaitingCallback(addedPartitions);
     }
 
     @Test
