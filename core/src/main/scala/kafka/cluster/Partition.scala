@@ -48,6 +48,7 @@ import org.apache.kafka.server.purgatory.{DelayedOperationPurgatory, TopicPartit
 import org.apache.kafka.server.share.fetch.DelayedShareFetchPartitionKey
 import org.apache.kafka.server.storage.log.{FetchIsolation, FetchParams, UnexpectedAppendOffsetException}
 import org.apache.kafka.storage.internals.checkpoint.OffsetCheckpoints
+import org.apache.kafka.storage.log.OffsetResultHolder
 import org.slf4j.event.Level
 
 import scala.collection.{Map, Seq}
@@ -739,7 +740,7 @@ class Partition(val topicPartition: TopicPartition,
                  topicId: Option[Uuid],
                  targetDirectoryId: Option[Uuid] = None): Boolean = {
     val (leaderHWIncremented, isNewLeader) = inWriteLock(leaderIsrUpdateLock) {
-      // Partition state changes are expected to have an partition epoch larger or equal
+      // Partition state changes are expected to have a partition epoch larger or equal
       // to the current partition epoch. The latter is allowed because the partition epoch
       // is also updated by the AlterPartition response so the new epoch might be known
       // before a LeaderAndIsr request is received or before an update is received via
@@ -1627,7 +1628,7 @@ class Partition(val topicPartition: TopicPartition,
     def getOffsetByTimestamp: OffsetResultHolder = {
       logManager.getLog(topicPartition)
         .map(log => log.fetchOffsetByTimestamp(timestamp, remoteLogManager))
-        .getOrElse(OffsetResultHolder(timestampAndOffsetOpt = None))
+        .getOrElse(new OffsetResultHolder(Optional.empty()))
     }
 
     // If we're in the lagging HW state after a leader election, throw OffsetNotAvailable for "latest" offset
@@ -1635,13 +1636,13 @@ class Partition(val topicPartition: TopicPartition,
     timestamp match {
       case ListOffsetsRequest.LATEST_TIMESTAMP =>
         maybeOffsetsError.map(e => throw e)
-          .getOrElse(OffsetResultHolder(Some(new TimestampAndOffset(RecordBatch.NO_TIMESTAMP, lastFetchableOffset, Optional.of(leaderEpoch)))))
+          .getOrElse(new OffsetResultHolder(Optional.of(new TimestampAndOffset(RecordBatch.NO_TIMESTAMP, lastFetchableOffset, Optional.of(leaderEpoch)))))
       case ListOffsetsRequest.EARLIEST_TIMESTAMP | ListOffsetsRequest.EARLIEST_LOCAL_TIMESTAMP =>
         getOffsetByTimestamp
       case _ =>
         val offsetResultHolder = getOffsetByTimestamp
-        offsetResultHolder.maybeOffsetsError = maybeOffsetsError
-        offsetResultHolder.lastFetchableOffset = Some(lastFetchableOffset)
+        offsetResultHolder.maybeOffsetsError(if (maybeOffsetsError.isDefined) Optional.of(maybeOffsetsError.get) else Optional.empty())
+        offsetResultHolder.lastFetchableOffset(Optional.of(lastFetchableOffset))
         offsetResultHolder
     }
   }
@@ -1824,7 +1825,7 @@ class Partition(val topicPartition: TopicPartition,
   ): PendingShrinkIsr = {
     // When shrinking the ISR, we cannot assume that the update will succeed as this could
     // erroneously advance the HW if the `AlterPartition` were to fail. Hence the "maximal ISR"
-    // for `PendingShrinkIsr` is the the current ISR.
+    // for `PendingShrinkIsr` is the current ISR.
     val isrToSend = partitionState.isr -- outOfSyncReplicaIds
     val isrWithBrokerEpoch = addBrokerEpochToIsr(isrToSend.toList).asJava
     val newLeaderAndIsr = new LeaderAndIsr(
@@ -1959,7 +1960,7 @@ class Partition(val topicPartition: TopicPartition,
         false
       case Errors.NEW_LEADER_ELECTED =>
         // The operation completed successfully but this replica got removed from the replica set by the controller
-        // while completing a ongoing reassignment. This replica is no longer the leader but it does not know it
+        // while completing an ongoing reassignment. This replica is no longer the leader but it does not know it
         // yet. It should remain in the current pending state until the metadata overrides it.
         // This is only raised in KRaft mode.
         debug(s"The alter partition request successfully updated the partition state to $proposedIsrState but " +

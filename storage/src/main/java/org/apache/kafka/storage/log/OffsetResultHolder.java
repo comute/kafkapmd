@@ -17,14 +17,15 @@
 package org.apache.kafka.storage.log;
 
 import org.apache.kafka.common.errors.ApiException;
-import org.apache.kafka.common.record.FileRecords;
+import org.apache.kafka.common.record.FileRecords.TimestampAndOffset;
 
+import java.util.Objects;
 import java.util.Optional;
 
 public class OffsetResultHolder {
 
-    private Optional<FileRecords.TimestampAndOffset> timestampAndOffsetOpt;
-    private Optional<AsyncOffsetReadFutureHolder<Either<Exception, FileRecords.TimestampAndOffset>>> futureHolderOpt;
+    private Optional<TimestampAndOffset> timestampAndOffsetOpt;
+    private Optional<AsyncOffsetReadFutureHolder<FileRecordsOrError>> futureHolderOpt;
     private Optional<ApiException> maybeOffsetsError = Optional.empty();
     private Optional<Long> lastFetchableOffset = Optional.empty();
 
@@ -33,22 +34,22 @@ public class OffsetResultHolder {
     }
 
     public OffsetResultHolder(
-            Optional<FileRecords.TimestampAndOffset> timestampAndOffsetOpt,
-            Optional<AsyncOffsetReadFutureHolder<Either<Exception, FileRecords.TimestampAndOffset>>> futureHolderOpt
+            Optional<TimestampAndOffset> timestampAndOffsetOpt,
+            Optional<AsyncOffsetReadFutureHolder<FileRecordsOrError>> futureHolderOpt
     ) {
         this.timestampAndOffsetOpt = timestampAndOffsetOpt;
         this.futureHolderOpt = futureHolderOpt;
     }
 
-    public OffsetResultHolder(Optional<FileRecords.TimestampAndOffset> timestampAndOffsetOpt) {
+    public OffsetResultHolder(Optional<TimestampAndOffset> timestampAndOffsetOpt) {
         this(timestampAndOffsetOpt, Optional.empty());
     }
 
-    public Optional<FileRecords.TimestampAndOffset> timestampAndOffsetOpt() {
+    public Optional<TimestampAndOffset> timestampAndOffsetOpt() {
         return timestampAndOffsetOpt;
     }
 
-    public Optional<AsyncOffsetReadFutureHolder<Either<Exception, FileRecords.TimestampAndOffset>>> futureHolderOpt() {
+    public Optional<AsyncOffsetReadFutureHolder<FileRecordsOrError>> futureHolderOpt() {
         return futureHolderOpt;
     }
 
@@ -60,12 +61,8 @@ public class OffsetResultHolder {
         return lastFetchableOffset;
     }
 
-    public void timestampAndOffsetOpt(Optional<FileRecords.TimestampAndOffset> timestampAndOffsetOpt) {
+    public void timestampAndOffsetOpt(Optional<TimestampAndOffset> timestampAndOffsetOpt) {
         this.timestampAndOffsetOpt = timestampAndOffsetOpt;
-    }
-
-    public void futureHolderOpt(Optional<AsyncOffsetReadFutureHolder<Either<Exception, FileRecords.TimestampAndOffset>>> futureHolderOpt) {
-        this.futureHolderOpt = futureHolderOpt;
     }
 
     public void maybeOffsetsError(Optional<ApiException> maybeOffsetsError) {
@@ -74,5 +71,68 @@ public class OffsetResultHolder {
 
     public void lastFetchableOffset(Optional<Long> lastFetchableOffset) {
         this.lastFetchableOffset = lastFetchableOffset;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        OffsetResultHolder that = (OffsetResultHolder) o;
+        return Objects.equals(timestampAndOffsetOpt, that.timestampAndOffsetOpt) && Objects.equals(futureHolderOpt, that.futureHolderOpt) && Objects.equals(maybeOffsetsError, that.maybeOffsetsError) && Objects.equals(lastFetchableOffset, that.lastFetchableOffset);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hashCode(timestampAndOffsetOpt);
+        result = 31 * result + Objects.hashCode(futureHolderOpt);
+        result = 31 * result + Objects.hashCode(maybeOffsetsError);
+        result = 31 * result + Objects.hashCode(lastFetchableOffset);
+        return result;
+    }
+
+    public static class FileRecordsOrError {
+        private Optional<Exception> exception;
+        private Optional<TimestampAndOffset> timestampAndOffset;
+
+        public FileRecordsOrError(
+                Optional<Exception> exception,
+                Optional<TimestampAndOffset> timestampAndOffset
+        ) {
+            this.exception = exception;
+            this.timestampAndOffset = timestampAndOffset;
+        }
+
+        public Optional<Exception> exception() {
+            return exception;
+        }
+
+        public Optional<TimestampAndOffset> timestampAndOffset() {
+            return timestampAndOffset;
+        }
+        
+        public boolean hasException() {
+            return exception.isPresent();
+        }
+        
+        public boolean hasTimestampAndOffset() {
+            return timestampAndOffset.isPresent();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            FileRecordsOrError that = (FileRecordsOrError) o;
+            return Objects.equals(exception, that.exception) && Objects.equals(timestampAndOffset, that.timestampAndOffset);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Objects.hashCode(exception);
+            result = 31 * result + Objects.hashCode(timestampAndOffset);
+            return result;
+        }
     }
 }
