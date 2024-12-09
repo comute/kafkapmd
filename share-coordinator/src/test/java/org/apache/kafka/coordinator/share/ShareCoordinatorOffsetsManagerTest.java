@@ -52,10 +52,10 @@ public class ShareCoordinatorOffsetsManagerTest {
         assertEquals(Optional.empty(), manager.lastRedundantOffset());
 
         manager.updateState(KEY1, 10L);
-        assertEquals(Optional.of(10L), manager.lastRedundantOffset()); // [0-9] offsets are redundant
+        assertEquals(Optional.of(10L), manager.lastRedundantOffset()); // [0-9] offsets are redundant.
 
         manager.updateState(KEY2, 15L);
-        assertEquals(Optional.of(10L), manager.lastRedundantOffset());  // will keep returning last seen value of lastRedundantOffset
+        assertEquals(Optional.empty(), manager.lastRedundantOffset());  // Not update to last redundant after adding 15L so, empty.
 
         assertEquals(10L, manager.curState().get(KEY1));
         assertEquals(15L, manager.curState().get(KEY2));
@@ -145,7 +145,7 @@ public class ShareCoordinatorOffsetsManagerTest {
         return Stream.of(
             new ShareOffsetTestHolder(
                 "redundant state reverse key order",
-                // requests come in order KEY1, KEY2, KEY3, KEY3, KEY2, KEY1
+                // Requests come in order KEY1, KEY2, KEY3, KEY3, KEY2, KEY1.
                 List.of(
                     ShareOffsetTestHolder.TestTuple.instance(KEY1, 10L, Optional.empty()),
                     ShareOffsetTestHolder.TestTuple.instance(KEY2, 11L, Optional.empty()),

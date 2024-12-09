@@ -120,6 +120,12 @@ public class ShareCoordinatorOffsetsManager {
         if (value == null || value <= 0 || value == Long.MAX_VALUE) {
             return Optional.empty();
         }
+        // We don't want to send the same value repeatedly
+        // as caller might call delete records again and again
+        // reducing efficiency hence, once valid redundant value is
+        // returned lets set it to 0 so next time onwards
+        // empty Optional is returned.
+        redundantOffset.put(REDUNDANT_OFFSET, 0L);
         return Optional.of(value);
     }
 
