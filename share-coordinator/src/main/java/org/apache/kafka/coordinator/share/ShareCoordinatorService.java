@@ -48,6 +48,7 @@ import org.apache.kafka.server.config.ShareCoordinatorConfig;
 import org.apache.kafka.server.record.BrokerCompressionType;
 import org.apache.kafka.server.share.SharePartitionKey;
 import org.apache.kafka.server.util.timer.Timer;
+import org.apache.kafka.server.util.timer.TimerTask;
 
 import org.slf4j.Logger;
 
@@ -75,6 +76,8 @@ public class ShareCoordinatorService implements ShareCoordinator {
     private final ShareCoordinatorMetrics shareCoordinatorMetrics;
     private volatile int numPartitions = -1; // Number of partitions for __share_group_state. Provided when component is started.
     private final Time time;
+    private final Timer timer;
+    private final PartitionWriter writer;
 
     public static class Builder {
         private final int nodeId;
@@ -184,7 +187,9 @@ public class ShareCoordinatorService implements ShareCoordinator {
                 config,
                 runtime,
                 coordinatorMetrics,
-                time
+                time,
+                timer,
+                writer
             );
         }
     }
@@ -194,12 +199,16 @@ public class ShareCoordinatorService implements ShareCoordinator {
         ShareCoordinatorConfig config,
         CoordinatorRuntime<ShareCoordinatorShard, CoordinatorRecord> runtime,
         ShareCoordinatorMetrics shareCoordinatorMetrics,
-        Time time) {
+        Time time,
+        Timer timer,
+        PartitionWriter writer) {
         this.log = logContext.logger(ShareCoordinatorService.class);
         this.config = config;
         this.runtime = runtime;
         this.shareCoordinatorMetrics = shareCoordinatorMetrics;
         this.time = time;
+        this.timer = timer;
+        this.writer = writer;
     }
 
     @Override
@@ -240,7 +249,85 @@ public class ShareCoordinatorService implements ShareCoordinator {
 
         log.info("Starting up.");
         numPartitions = shareGroupTopicPartitionCount.getAsInt();
+        setupRecordPruning();
         log.info("Startup complete.");
+    }
+
+    // visibility for tests
+    void setupRecordPruning() {
+        log.info("Scheduling share state topic prune job.");
+        timer.add(new TimerTask(config.shareCoordinatorTopicPruneIntervalMs()) {
+            @Override
+            public void run() {
+                List<CompletableFuture<Void>> futures = new ArrayList<>();
+                runtime.activeTopicPartitions().forEach(tp -> futures.add(performRecordPruning(tp)));
+
+                CompletableFuture.allOf(futures.toArray(new CompletableFuture[]{}))
+                    .whenComplete((res, exp) -> {
+                        if (exp != null) {
+                            log.error("Received error in share state topic prune.", exp);
+                        }
+                        // Perpetual recursion, failure or not.
+                        setupRecordPruning();
+                    });
+            }
+        });
+    }
+
+    // visibility for tests
+    CompletableFuture<Void> performRecordPruning(TopicPartition tp) {
+        // This future will always be completed normally, exception or not.
+        CompletableFuture<Void> fut = new CompletableFuture<>();
+        runtime.scheduleWriteOperation(
+            "write-state-record-prune",
+            tp,
+            Duration.ofMillis(config.shareCoordinatorWriteTimeoutMs()),
+            ShareCoordinatorShard::lastRedundantOffset
+        ).whenComplete((result, exception) -> {
+            if (exception != null) {
+                log.debug("Last redundant offset for tp {} lookup threw an error.", tp, exception);
+                Errors error = Errors.forException(exception);
+                // These errors might result from partition metadata not loaded
+                // or shard re-election. Will cause unnecessary noise, hence not logging
+                if (!(error.equals(Errors.COORDINATOR_LOAD_IN_PROGRESS) || error.equals(Errors.NOT_COORDINATOR))) {
+                    log.error("Last redundant offset lookup for tp {} threw an error.", tp, exception);
+                    // Should not reschedule -> unknown exception.
+                    fut.completeExceptionally(exception);
+                    return;
+                }
+                // Should reschedule -> could be transient.
+                fut.complete(null);
+                return;
+            }
+            if (result.isPresent()) {
+                Long off = result.get();
+                // Guard and optimization.
+                if (off == Long.MAX_VALUE || off <= 0) {
+                    log.warn("Last redundant offset value {} not suitable to make delete call for {}.", off, tp);
+                    // Should reschedule -> next lookup could yield valid value.
+                    fut.complete(null);
+                    return;
+                }
+
+                log.info("Pruning records in {} till offset {}.", tp, off);
+                writer.deleteRecords(tp, off)
+                    .whenComplete((res, exp) -> {
+                        if (exp != null) {
+                            // Should not reschedule -> problems while deleting.
+                            log.debug("Exception while deleting records in {} till offset {}.", tp, off, exp);
+                            fut.completeExceptionally(exp);
+                            return;
+                        }
+                        // Should reschedule -> successful delete
+                        fut.complete(null);
+                    });
+            } else {
+                log.debug("No offset value for tp {} found.", tp);
+                // Should reschedule -> next lookup could yield valid value.
+                fut.complete(null);
+            }
+        });
+        return fut;
     }
 
     @Override
