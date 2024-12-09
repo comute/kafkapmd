@@ -70,13 +70,176 @@ public class Topology {
     }
 
     /**
+     * @deprecated Since 4.0. Use {@link org.apache.kafka.streams.AutoOffsetReset} instead.
      * Sets the {@code auto.offset.reset} configuration when
      * {@link #addSource(AutoOffsetReset, String, String...) adding a source processor} or when creating {@link KStream}
      * or {@link KTable} via {@link StreamsBuilder}.
      */
+    @Deprecated
     public enum AutoOffsetReset {
         EARLIEST, LATEST
     }
+
+    /**
+     * Adds a new source that consumes the specified topics and forwards the records to child processor and/or sink nodes.
+     * The source will use the specified {@link org.apache.kafka.streams.AutoOffsetReset offset reset policy} if no committed offsets are found.
+     *
+     * @param offsetReset the auto offset reset policy to use for this source if no committed offsets are found; acceptable values: earliest or latest
+     * @param name the unique name of the source used to reference this node when {@link #addProcessor(String, ProcessorSupplier, String...) adding processor children}
+     * @param topics the name of one or more Kafka topics that this source is to consume
+     * @return itself
+     * @throws TopologyException if a processor is already added or if topics have already been registered by another source
+     */
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
+                                           final String name,
+                                           final String... topics) {
+        internalTopologyBuilder.addSource(null, name, null, null, null, topics);
+        return this;
+    }
+
+    /**
+    * Adds a new source that consumes from topics matching the given pattern and forwards the records to child processor and/or sink nodes.
+    * The source will use the specified {@link org.apache.kafka.streams.AutoOffsetReset offset reset policy} if no committed offsets are found.
+    *
+    * @param offsetReset the auto offset reset policy to use for this source if no committed offsets are found; acceptable values: earliest or latest
+    * @param name the unique name of the source used to reference this node when {@link #addProcessor(String, ProcessorSupplier, String...) adding processor children}
+    * @param topicPattern the regular expression pattern to match Kafka topics that this source is to consume
+    * @return itself
+    * @throws TopologyException if a processor is already added or if topics have already been registered by another source
+    */
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
+                                           final String name,
+                                           final Pattern topicPattern) {
+        internalTopologyBuilder.addSource(null, name, null, null, null, topicPattern);
+        return this;
+    }
+
+    /**
+    * Adds a new source that consumes the specified topics with a specified {@link TimestampExtractor} and forwards the records to child processor and/or sink nodes.
+    * The source will use the provided timestamp extractor to determine the timestamp of each record.
+    *
+    * @param offsetReset the auto offset reset policy to use if no committed offsets are found; acceptable values: earliest or latest
+    * @param timestampExtractor the timestamp extractor to use for this source
+    * @param name the unique name of the source used to reference this node when {@link #addProcessor(String, ProcessorSupplier, String...) adding processor children}
+    * @param topics the name of one or more Kafka topics that this source is to consume
+    * @return itself
+    * @throws TopologyException if a processor is already added or if topics have already been registered by another source
+    */
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
+                                           final TimestampExtractor timestampExtractor,
+                                           final String name,
+                                           final String... topics) {
+        internalTopologyBuilder.addSource(null, name, timestampExtractor, null, null, topics);
+        return this;
+    }
+
+    /**
+    * Adds a new source that consumes from topics matching the given pattern with a specified {@link TimestampExtractor} and forwards the records to child processor and/or sink nodes.
+    * The source will use the provided timestamp extractor to determine the timestamp of each record.
+    *
+    * @param offsetReset the auto offset reset policy to use if no committed offsets are found; acceptable values: earliest or latest
+    * @param timestampExtractor the timestamp extractor to use for this source
+    * @param name the unique name of the source used to reference this node when {@link #addProcessor(String, ProcessorSupplier, String...) adding processor children}
+    * @param topicPattern the regular expression pattern to match Kafka topics that this source is to consume
+    * @return itself
+    * @throws TopologyException if a processor is already added or if topics have already been registered by another source
+    */
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
+                                           final TimestampExtractor timestampExtractor,
+                                           final String name,
+                                           final Pattern topicPattern) {
+        internalTopologyBuilder.addSource(null, name, timestampExtractor, null, null, topicPattern);
+        return this;
+    }
+
+    /**
+    * Adds a new source that consumes the specified topics with specified {@link Deserializer deserializers} for key and value, and forwards the records to child processor and/or sink nodes.
+    * The source will use the provided deserializers for key and value serialization.
+    *
+    * @param offsetReset the auto offset reset policy to use if no committed offsets are found; acceptable values: earliest or latest
+    * @param name the unique name of the source used to reference this node when {@link #addProcessor(String, ProcessorSupplier, String...) adding processor children}
+    * @param keyDeserializer the deserializer for the key of each record
+    * @param valueDeserializer the deserializer for the value of each record
+    * @param topics the name of one or more Kafka topics that this source is to consume
+    * @return itself
+    * @throws TopologyException if a processor is already added or if topics have already been registered by another source
+    */
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
+                                           final String name,
+                                           final Deserializer<?> keyDeserializer,
+                                           final Deserializer<?> valueDeserializer,
+                                           final String... topics) {
+        internalTopologyBuilder.addSource(null, name, null, keyDeserializer, valueDeserializer, topics);
+        return this;
+    }
+
+    /**
+    * Adds a new source that consumes from topics matching the given pattern with specified {@link Deserializer deserializers} for key and value, and forwards the records to child processor and/or sink nodes.
+    * The source will use the provided deserializers for key and value serialization.
+    *
+    * @param offsetReset the auto offset reset policy to use if no committed offsets are found; acceptable values: earliest or latest
+    * @param name the unique name of the source used to reference this node when {@link #addProcessor(String, ProcessorSupplier, String...) adding processor children}
+    * @param keyDeserializer the deserializer for the key of each record
+    * @param valueDeserializer the deserializer for the value of each record
+    * @param topicPattern the regular expression pattern to match Kafka topics that this source is to consume
+    * @return itself
+    * @throws TopologyException if a processor is already added or if topics have already been registered by another source
+    */
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
+                                           final String name,
+                                           final Deserializer<?> keyDeserializer,
+                                           final Deserializer<?> valueDeserializer,
+                                           final Pattern topicPattern) {
+        internalTopologyBuilder.addSource(null, name, null, keyDeserializer, valueDeserializer, topicPattern);
+        return this;
+    }
+
+    /**
+    * Adds a new source that consumes the specified topics with a specified {@link TimestampExtractor} and {@link Deserializer deserializers} for key and value, and forwards the records to child processor and/or sink nodes.
+    * The source will use the provided timestamp extractor and deserializers for each record.
+    *
+    * @param offsetReset the auto offset reset policy to use if no committed offsets are found; acceptable values: earliest or latest
+    * @param name the unique name of the source used to reference this node when {@link #addProcessor(String, ProcessorSupplier, String...) adding processor children}
+    * @param timestampExtractor the timestamp extractor to use for this source
+    * @param keyDeserializer the deserializer for the key of each record
+    * @param valueDeserializer the deserializer for the value of each record
+    * @param topics the name of one or more Kafka topics that this source is to consume
+    * @return itself
+    * @throws TopologyException if a processor is already added or if topics have already been registered by another source
+    */
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
+                                           final String name,
+                                           final TimestampExtractor timestampExtractor,
+                                           final Deserializer<?> keyDeserializer,
+                                           final Deserializer<?> valueDeserializer,
+                                           final String... topics) {
+        internalTopologyBuilder.addSource(null, name, timestampExtractor, keyDeserializer, valueDeserializer, topics);
+        return this;
+    }
+
+    /**
+    * Adds a new source that consumes from topics matching the given pattern with a specified {@link TimestampExtractor} and {@link Deserializer deserializers} for key and value, and forwards the records to child processor and/or sink nodes.
+    * The source will use the provided timestamp extractor and deserializers for each record.
+    *
+    * @param offsetReset the auto offset reset policy to use if no committed offsets are found; acceptable values: earliest or latest
+    * @param name the unique name of the source used to reference this node when {@link #addProcessor(String, ProcessorSupplier, String...) adding processor children}
+    * @param timestampExtractor the timestamp extractor to use for this source
+    * @param keyDeserializer the deserializer for the key of each record
+    * @param valueDeserializer the deserializer for the value of each record
+    * @param topicPattern the regular expression pattern to match Kafka topics that this source is to consume
+    * @return itself
+    * @throws TopologyException if a processor is already added or if topics have already been registered by another source
+    */
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
+                                           final String name,
+                                           final TimestampExtractor timestampExtractor,
+                                           final Deserializer<?> keyDeserializer,
+                                           final Deserializer<?> valueDeserializer,
+                                           final Pattern topicPattern) {
+        internalTopologyBuilder.addSource(null, name, timestampExtractor, keyDeserializer, valueDeserializer, topicPattern);
+        return this;
+    }
+
 
     /**
      * Add a new source that consumes the named topics and forward the records to child processor and/or sink nodes.
@@ -131,7 +294,7 @@ public class Topology {
      * @return itself
      * @throws TopologyException if processor is already added or if topics have already been registered by another source
      */
-    public synchronized Topology addSource(final AutoOffsetReset offsetReset,
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
                                            final String name,
                                            final String... topics) {
         internalTopologyBuilder.addSource(offsetReset, name, null, null, null, topics);
@@ -153,7 +316,7 @@ public class Topology {
      * @return itself
      * @throws TopologyException if processor is already added or if topics have already been registered by another source
      */
-    public synchronized Topology addSource(final AutoOffsetReset offsetReset,
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
                                            final String name,
                                            final Pattern topicPattern) {
         internalTopologyBuilder.addSource(offsetReset, name, null, null, null, topicPattern);
@@ -219,7 +382,7 @@ public class Topology {
      * @return itself
      * @throws TopologyException if processor is already added or if topics have already been registered by another source
      */
-    public synchronized Topology addSource(final AutoOffsetReset offsetReset,
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
                                            final TimestampExtractor timestampExtractor,
                                            final String name,
                                            final String... topics) {
@@ -244,7 +407,7 @@ public class Topology {
      * @return itself
      * @throws TopologyException if processor is already added or if topics have already been registered by another source
      */
-    public synchronized Topology addSource(final AutoOffsetReset offsetReset,
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
                                            final TimestampExtractor timestampExtractor,
                                            final String name,
                                            final Pattern topicPattern) {
@@ -321,7 +484,7 @@ public class Topology {
      * @throws TopologyException if processor is already added or if topics have already been registered by name
      */
     @SuppressWarnings("overloads")
-    public synchronized Topology addSource(final AutoOffsetReset offsetReset,
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
                                            final String name,
                                            final Deserializer<?> keyDeserializer,
                                            final Deserializer<?> valueDeserializer,
@@ -349,7 +512,7 @@ public class Topology {
      * @return itself
      * @throws TopologyException if processor is already added or if topics have already been registered by name
      */
-    public synchronized Topology addSource(final AutoOffsetReset offsetReset,
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
                                            final String name,
                                            final Deserializer<?> keyDeserializer,
                                            final Deserializer<?> valueDeserializer,
@@ -377,7 +540,7 @@ public class Topology {
      * @throws TopologyException if processor is already added or if topics have already been registered by another source
      */
     @SuppressWarnings("overloads")
-    public synchronized Topology addSource(final AutoOffsetReset offsetReset,
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
                                            final String name,
                                            final TimestampExtractor timestampExtractor,
                                            final Deserializer<?> keyDeserializer,
@@ -409,7 +572,7 @@ public class Topology {
      * @throws TopologyException if processor is already added or if topics have already been registered by name
      */
     @SuppressWarnings("overloads")
-    public synchronized Topology addSource(final AutoOffsetReset offsetReset,
+    public synchronized Topology addSource(final org.apache.kafka.streams.AutoOffsetReset offsetReset,
                                            final String name,
                                            final TimestampExtractor timestampExtractor,
                                            final Deserializer<?> keyDeserializer,
@@ -773,7 +936,7 @@ public class Topology {
                                                                   final ProcessorSupplier<KIn, VIn, Void, Void> stateUpdateSupplier) {
         storeBuilder.withLoggingDisabled();
 
-        internalTopologyBuilder.addSource(AutoOffsetReset.EARLIEST, sourceName, timestampExtractor, keyDeserializer, valueDeserializer, topic);
+        internalTopologyBuilder.addSource(org.apache.kafka.streams.AutoOffsetReset.earliest(), sourceName, timestampExtractor, keyDeserializer, valueDeserializer, topic);
         internalTopologyBuilder.addProcessor(processorName, stateUpdateSupplier, sourceName);
         internalTopologyBuilder.addStateStore(storeBuilder, processorName);
         internalTopologyBuilder.connectSourceStoreAndTopic(storeBuilder.name(), topic);
