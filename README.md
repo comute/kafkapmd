@@ -5,12 +5,11 @@
   <source media="(prefers-color-scheme: light)" srcset="docs/images/kafka-logo-readme-light.svg">
   <img alt="Kafka Logo" src="docs/images/kafka-logo-readme-light.svg" width="80"> 
 </picture>
-</a> 
+</a> <br><br>
 
-## About Kafka
-[Apache Kafka](https://kafka.apache.org) is an open-source distributed event streaming platform used by thousands of companies for high-performance data pipelines, streaming analytics, data integration, and mission-critical applications.
+[**Apache Kafka**](https://kafka.apache.org) is an open-source distributed event streaming platform used by thousands of companies for high-performance data pipelines, streaming analytics, data integration, and mission-critical applications.
 
-### Prerequisite
+## Prerequisite
 
 
 You need to have [Java](http://www.oracle.com/technetwork/java/javase/downloads/index.html) installed.
