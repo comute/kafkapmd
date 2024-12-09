@@ -278,7 +278,7 @@ public class Plugins {
         return delegatingLoader.loader(connectorClassOrAlias);
     }
 
-    public ClassLoader pluginLoader(String classOrAlias, VersionRange range) throws ClassNotFoundException, VersionedPluginLoadingException {
+    public ClassLoader pluginLoader(String classOrAlias, VersionRange range) {
         return delegatingLoader.loader(classOrAlias, range);
     }
 
@@ -298,7 +298,7 @@ public class Plugins {
         return scanResult.sinkConnectors();
     }
 
-    public Set<PluginDesc<SinkConnector>> sinkConnectors(String connectorClassOrAlias) {
+    Set<PluginDesc<SinkConnector>> sinkConnectors(String connectorClassOrAlias) {
         return pluginsOfClass(connectorClassOrAlias, scanResult.sinkConnectors());
     }
 
@@ -306,7 +306,7 @@ public class Plugins {
         return scanResult.sourceConnectors();
     }
 
-    public Set<PluginDesc<SourceConnector>> sourceConnectors(String connectorClassOrAlias) {
+    Set<PluginDesc<SourceConnector>> sourceConnectors(String connectorClassOrAlias) {
         return pluginsOfClass(connectorClassOrAlias, scanResult.sourceConnectors());
     }
 
@@ -357,6 +357,10 @@ public class Plugins {
         return plugins;
     }
 
+    public PluginsRecommenders recommender() {
+        return new PluginsRecommenders(this);
+    }
+
     public Object newPlugin(String classOrAlias) throws ClassNotFoundException {
         Class<?> klass = pluginClass(delegatingLoader, classOrAlias, Object.class);
         return newPlugin(klass);
@@ -365,6 +369,13 @@ public class Plugins {
     public Object newPlugin(String classOrAlias, VersionRange range) throws VersionedPluginLoadingException, ClassNotFoundException {
         Class<?> klass = pluginClass(delegatingLoader, classOrAlias, Object.class, range);
         return newPlugin(klass);
+    }
+
+    public <T> Object newPlugin(String classOrAlias, Class<T> baseClass, VersionRange range) throws ClassNotFoundException {
+        if (range == null) {
+            return Utils.newInstance(classOrAlias, baseClass);
+        }
+        return  newPlugin(classOrAlias, range);
     }
 
     public Connector newConnector(String connectorClassOrAlias) {
