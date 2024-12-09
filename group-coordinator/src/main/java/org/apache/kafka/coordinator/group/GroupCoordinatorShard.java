@@ -239,21 +239,10 @@ public class GroupCoordinatorShard implements CoordinatorShard<CoordinatorRecord
                 .withTime(time)
                 .withTimer(timer)
                 .withExecutor(executor)
+                .withConfig(config)
                 .withGroupConfigManager(groupConfigManager)
-                .withConsumerGroupAssignors(config.consumerGroupAssignors())
-                .withConsumerGroupMaxSize(config.consumerGroupMaxSize())
-                .withConsumerGroupSessionTimeout(config.consumerGroupSessionTimeoutMs())
-                .withConsumerGroupHeartbeatInterval(config.consumerGroupHeartbeatIntervalMs())
-                .withClassicGroupMaxSize(config.classicGroupMaxSize())
-                .withClassicGroupInitialRebalanceDelayMs(config.classicGroupInitialRebalanceDelayMs())
-                .withClassicGroupNewMemberJoinTimeoutMs(config.classicGroupNewMemberJoinTimeoutMs())
-                .withClassicGroupMinSessionTimeoutMs(config.classicGroupMinSessionTimeoutMs())
-                .withClassicGroupMaxSessionTimeoutMs(config.classicGroupMaxSessionTimeoutMs())
-                .withConsumerGroupMigrationPolicy(config.consumerGroupMigrationPolicy())
-                .withShareGroupMaxSize(config.shareGroupMaxSize())
-                .withShareGroupSessionTimeout(config.shareGroupSessionTimeoutMs())
-                .withShareGroupHeartbeatInterval(config.shareGroupHeartbeatIntervalMs())
-               // TODO: Do we need separate configs for streams groups?
+                .withGroupCoordinatorMetricsShard(metricsShard)
+                // TODO: Do we need separate configs for streams groups?
                 .withStreamsGroupAssignors(Collections.singletonList(new StickyTaskAssignor()))
                 .withStreamsGroupMaxSize(config.consumerGroupMaxSize())
                 .withStreamsGroupSessionTimeout(config.consumerGroupSessionTimeoutMs())
@@ -672,7 +661,7 @@ public class GroupCoordinatorShard implements CoordinatorShard<CoordinatorRecord
         List<String> groupIds,
         long committedOffset
     ) {
-        return groupMetadataManager.describeGroups(groupIds, committedOffset);
+        return groupMetadataManager.describeGroups(context, groupIds, committedOffset);
     }
 
     /**
