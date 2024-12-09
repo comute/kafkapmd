@@ -70,7 +70,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static org.apache.kafka.coordinator.common.runtime.CoordinatorRuntime.CoordinatorWriteEvent.NOT_QUEUED;
-import static org.apache.kafka.coordinator.common.runtime.KafkaMetricHistogram.MAX_LATENCY_MS;
 
 /**
  * The CoordinatorRuntime provides a framework to implement coordinators such as the group coordinator
@@ -1383,7 +1382,7 @@ public class CoordinatorRuntime<S extends CoordinatorShard<U>, U> implements Aut
 
             if (deferredEventQueuedTimestamp != NOT_QUEUED) {
                 // Only record the purgatory time if the event was deferred.
-                runtimeMetrics.recordEventPurgatoryTime(Math.min(MAX_LATENCY_MS, purgatoryTimeMs));
+                runtimeMetrics.recordEventPurgatoryTime(purgatoryTimeMs);
             }
         }
 
@@ -1676,7 +1675,7 @@ public class CoordinatorRuntime<S extends CoordinatorShard<U>, U> implements Aut
 
             if (deferredEventQueuedTimestamp != NOT_QUEUED) {
                 // Only record the purgatory time if the event was deferred.
-                runtimeMetrics.recordEventPurgatoryTime(Math.min(purgatoryTimeMs, MAX_LATENCY_MS));
+                runtimeMetrics.recordEventPurgatoryTime(purgatoryTimeMs);
             }
         }
 
