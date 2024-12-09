@@ -216,14 +216,11 @@ public class NetworkClientDelegateTest {
         NetworkClientDelegate networkClientDelegate = newNetworkClientDelegate(false);
         assertTrue(networkClientDelegate.getAndClearMetadataError().isEmpty());
         networkClientDelegate.poll(0, time.milliseconds());
-        
-        assertTrue(networkClientDelegate.getAndClearMetadataError().isPresent());
-        networkClientDelegate.getAndClearMetadataError().ifPresent(
-                error -> {
-                    assertInstanceOf(AuthenticationException.class, error);
-                    assertEquals(authException.getMessage(), error.getMessage());
-                }
-        );
+
+        Optional<Exception> metadataError = networkClientDelegate.getAndClearMetadataError();
+        assertTrue(metadataError.isPresent());
+        assertInstanceOf(AuthenticationException.class, metadataError.get());
+        assertEquals(authException.getMessage(), metadataError.get().getMessage());
     }
 
     @Test
