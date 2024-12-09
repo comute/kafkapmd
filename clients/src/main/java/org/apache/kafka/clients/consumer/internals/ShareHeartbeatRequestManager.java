@@ -205,4 +205,22 @@ public class ShareHeartbeatRequestManager extends AbstractHeartbeatRequestManage
             }
         }
     }
+
+    @Override
+    public boolean handleSpecificError(final ShareGroupHeartbeatResponse response, final long currentTimeMs) {
+        Errors error = errorForResponse(response);
+        boolean errorHandled;
+
+        switch (error) {
+            case UNSUPPORTED_VERSION:
+                logger.error("{} failed due to {}: {}", heartbeatRequestName(), error, SHARE_PROTOCOL_NOT_SUPPORTED_MSG);
+                handleFatalFailure(error.exception(SHARE_PROTOCOL_NOT_SUPPORTED_MSG));
+                errorHandled = true;
+                break;
+
+            default:
+                errorHandled = false;
+        }
+        return errorHandled;
+    }
 }

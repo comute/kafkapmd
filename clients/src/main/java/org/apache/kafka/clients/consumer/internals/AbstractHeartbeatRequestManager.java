@@ -100,6 +100,9 @@ public abstract class AbstractHeartbeatRequestManager<R extends AbstractResponse
         "group protocol. Set group.protocol=classic on the consumer configs to revert to the CLASSIC protocol " +
         "until the cluster is upgraded.";
 
+    public static final String SHARE_PROTOCOL_NOT_SUPPORTED_MSG = "The cluster does not support the new SHARE " +
+            "group protocol. The cluster must be upgraded to use the share consumer feature.";
+
     AbstractHeartbeatRequestManager(
             final LogContext logContext,
             final Time time,
@@ -408,8 +411,10 @@ public abstract class AbstractHeartbeatRequestManager<R extends AbstractResponse
                 // Broker responded with HB not supported, meaning the new protocol is not enabled, so propagate
                 // custom message for it. Note that the case where the protocol is not supported at all should fail
                 // on the client side when building the request and checking supporting APIs (handled on onFailure).
-                logger.error("{} failed due to {}: {}", heartbeatRequestName(), error, errorMessage);
-                handleFatalFailure(error.exception(CONSUMER_PROTOCOL_NOT_SUPPORTED_MSG));
+                if (!handleSpecificError(response, currentTimeMs)) {
+                    logger.error("{} failed due to {}: {}", heartbeatRequestName(), error, errorMessage);
+                    handleFatalFailure(error.exception(errorMessage));
+                }
                 break;
 
             case FENCED_MEMBER_EPOCH:
