@@ -468,6 +468,7 @@ public abstract class AbstractHerder implements Herder, TaskStatus.Listener, Con
             pluginInstance = (T) plugins().newPlugin(pluginClass, pluginInterface, range);
         } catch (VersionedPluginLoadingException e) {
             log.error("Failed to load {} class {} with version {}: {}", pluginName, pluginClass, pluginVersion, e);
+            pluginConfigValue.addErrorMessage(e.getMessage());
             pluginVersionValue.addErrorMessage(e.getMessage());
             return null;
         } catch (ClassNotFoundException | RuntimeException e) {
@@ -694,7 +695,7 @@ public abstract class AbstractHerder implements Herder, TaskStatus.Listener, Con
             connector = cachedConnectors.getConnector(connType, connVersion);
             connectorLoader = plugins().pluginLoader(connType, connVersion);
         } catch (Exception e) {
-            throw new BadRequestException(e.getMessage());
+            throw new BadRequestException(e.getMessage(), e);
         }
 
         try (LoaderSwap loaderSwap = plugins().withClassLoader(connectorLoader)) {

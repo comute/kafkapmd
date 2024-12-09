@@ -44,12 +44,12 @@ public class CachedConnectors {
 
     private void validate(String connectorName, VersionRange range) throws Exception {
         if (invalidConnectors.containsKey(connectorName)) {
-            throw invalidConnectors.get(connectorName);
+            throw new Exception(invalidConnectors.get(connectorName));
         }
 
         String version = range == null ? LATEST_VERSION : range.toString();
         if (invalidVersions.containsKey(connectorName) && invalidVersions.get(connectorName).containsKey(version)) {
-            throw invalidVersions.get(connectorName).get(version);
+            throw new Exception(invalidVersions.get(connectorName).get(version));
         }
     }
 

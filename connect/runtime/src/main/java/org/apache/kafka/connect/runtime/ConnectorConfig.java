@@ -90,7 +90,6 @@ public class ConnectorConfig extends AbstractConfig {
     private static final String CONNECTOR_CLASS_DISPLAY = "Connector class";
 
     public static final String CONNECTOR_VERSION = "connector.version";
-    private static final String CONNECTOR_VERSION_DEFAULT = null;
     private static final String CONNECTOR_VERSION_DOC = "Version of the connector.";
     private static final String CONNECTOR_VERSION_DISPLAY = "Connector version";
     private static final ConfigDef.Validator CONNECTOR_VERSION_VALIDATOR = new PluginVersionValidator();
@@ -104,7 +103,6 @@ public class ConnectorConfig extends AbstractConfig {
     );
 
     public static final String KEY_CONVERTER_VERSION_CONFIG = WorkerConfig.KEY_CONVERTER_VERSION;
-    private static final String KEY_CONVERTER_VERSION_DEFAULT = null;
     private static final String KEY_CONVERTER_VERSION_DOC = "Version of the key converter.";
     private static final String KEY_CONVERTER_VERSION_DISPLAY = "Key converter version";
     private static final ConfigDef.Validator KEY_CONVERTER_VERSION_VALIDATOR = new PluginVersionValidator();
@@ -119,7 +117,6 @@ public class ConnectorConfig extends AbstractConfig {
     );
 
     public static final String VALUE_CONVERTER_VERSION_CONFIG = WorkerConfig.VALUE_CONVERTER_VERSION;
-    private static final String VALUE_CONVERTER_VERSION_DEFAULT = null;
     private static final String VALUE_CONVERTER_VERSION_DOC = "Version of the value converter.";
     private static final String VALUE_CONVERTER_VERSION_DISPLAY = "Value converter version";
     private static final ConfigDef.Validator VALUE_CONVERTER_VERSION_VALIDATOR = new PluginVersionValidator();
@@ -136,7 +133,6 @@ public class ConnectorConfig extends AbstractConfig {
     );
 
     public static final String HEADER_CONVERTER_VERSION_CONFIG = WorkerConfig.HEADER_CONVERTER_VERSION;
-    private static final String HEADER_CONVERTER_VERSION_DEFAULT = null;
     private static final String HEADER_CONVERTER_VERSION_DOC = "Version of the header converter.";
     private static final String HEADER_CONVERTER_VERSION_DISPLAY = "Header converter version";
     private static final ConfigDef.Validator HEADER_CONVERTER_VERSION_VALIDATOR = new PluginVersionValidator();
@@ -220,7 +216,7 @@ public class ConnectorConfig extends AbstractConfig {
     public static final String PREDICATES_PREFIX = "predicates.";
 
     private static final PluginsRecommenders EMPTY_RECOMMENDER = new PluginsRecommenders();
-    private static final ConverterDefaults CONVERTER_DEFAULTS = new ConverterDefaults();
+    private static final ConverterDefaults CONVERTER_DEFAULTS = new ConverterDefaults(null, null);
 
     private final ConnectorConfig.EnrichedConnectorConfig enrichedConfig;
 
@@ -506,14 +502,12 @@ public class ConnectorConfig extends AbstractConfig {
         final String workerConverter = workerProps.get(workerConverterConfig);
         final String connectorClass = connectorProps.get(ConnectorConfig.CONNECTOR_CLASS_CONFIG);
         final String connectorVersion = connectorProps.get(ConnectorConfig.CONNECTOR_VERSION);
+        String type = null;
         if (connectorClass == null || (connectorConverter == null && workerConverter == null)) {
-            return new ConverterDefaults();
+            return new ConverterDefaults(null, null);
         }
-
-        ConverterDefaults defaults = new ConverterDefaults();
         // update the default of connector converter based on if the worker converter is provided
-        defaults.type = workerConverter;
-
+        type = workerConverter;
 
         String version = null;
         if (connectorConverter != null) {
@@ -524,8 +518,7 @@ public class ConnectorConfig extends AbstractConfig {
                 version = plugins.latestVersion(workerConverter);
             }
         }
-        defaults.version = version;
-        return defaults;
+        return new ConverterDefaults(type, version);
     }
 
     private static void updateKeyDefault(ConfigDef configDef, String versionConfigKey, String versionDefault) {
@@ -739,8 +732,21 @@ public class ConnectorConfig extends AbstractConfig {
     }
 
     private static class ConverterDefaults {
-        private String type = null;
-        private String version = null;
+        private final String type;
+        private final String version;
+
+        public ConverterDefaults(String type, String version) {
+            this.type = type;
+            this.version = version;
+        }
+
+        public String type() {
+            return type;
+        }
+
+        public String version() {
+            return version;
+        }
     }
 
     public static class PluginVersionValidator implements ConfigDef.Validator {

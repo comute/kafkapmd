@@ -237,6 +237,8 @@ public class DelegatingClassLoader extends URLClassLoader {
                     name
             ));
         } else if (classpathPlugins.isEmpty()) {
+
+
             throw new VersionedPluginLoadingException("Invalid plugin found in classpath");
         } else {
             pluginVersion = classpathPlugins.get(0).version();

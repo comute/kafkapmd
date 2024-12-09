@@ -298,7 +298,7 @@ public class Plugins {
         return scanResult.sinkConnectors();
     }
 
-    public Set<PluginDesc<SinkConnector>> sinkConnectors(String connectorClassOrAlias) {
+    Set<PluginDesc<SinkConnector>> sinkConnectors(String connectorClassOrAlias) {
         return pluginsOfClass(connectorClassOrAlias, scanResult.sinkConnectors());
     }
 
@@ -306,7 +306,7 @@ public class Plugins {
         return scanResult.sourceConnectors();
     }
 
-    public Set<PluginDesc<SourceConnector>> sourceConnectors(String connectorClassOrAlias) {
+    Set<PluginDesc<SourceConnector>> sourceConnectors(String connectorClassOrAlias) {
         return pluginsOfClass(connectorClassOrAlias, scanResult.sourceConnectors());
     }
 
