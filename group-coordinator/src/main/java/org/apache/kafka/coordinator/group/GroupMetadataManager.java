@@ -344,31 +344,6 @@ public class GroupMetadataManager {
             return this;
         }
 
-        Builder withStreamsGroupAssignors(List<TaskAssignor> streamsGroupAssignors) {
-            this.streamsGroupAssignors = streamsGroupAssignors;
-            return this;
-        }
-
-        Builder withStreamsGroupMaxSize(int streamsGroupMaxSize) {
-            this.streamsGroupMaxSize = streamsGroupMaxSize;
-            return this;
-        }
-
-        Builder withStreamsGroupSessionTimeout(int streamsGroupSessionTimeoutMs) {
-            this.streamsGroupSessionTimeoutMs = streamsGroupSessionTimeoutMs;
-            return this;
-        }
-
-        Builder withStreamsGroupHeartbeatInterval(int streamsGroupHeartbeatIntervalMs) {
-            this.streamsGroupHeartbeatIntervalMs = streamsGroupHeartbeatIntervalMs;
-            return this;
-        }
-
-        Builder withStreamsGroupMetadataRefreshIntervalMs(int streamsGroupMetadataRefreshIntervalMs) {
-            this.streamsGroupMetadataRefreshIntervalMs = streamsGroupMetadataRefreshIntervalMs;
-            return this;
-        }
-
         Builder withMetadataImage(MetadataImage metadataImage) {
             this.metadataImage = metadataImage;
             return this;
@@ -493,36 +468,6 @@ public class GroupMetadataManager {
      * The group manager.
      */
     private final GroupConfigManager groupConfigManager;
-
-    /**
-     * The supported task assignors keyed by their name.
-     */
-    private final Map<String, TaskAssignor> taskAssignors;
-
-    /**
-     * The default assignor used.
-     */
-    private final TaskAssignor defaultTaskAssignor;
-
-    /**
-     * The maximum number of members allowed in a single streams group.
-     */
-    private final int streamsGroupMaxSize;
-
-    /**
-     * The heartbeat interval for streams groups.
-     */
-    private final int streamsGroupHeartbeatIntervalMs;
-
-    /**
-     * The session timeout for streams groups.
-     */
-    private final int streamsGroupSessionTimeoutMs;
-
-    /**
-     * The metadata refresh interval.
-     */
-    private final int streamsGroupMetadataRefreshIntervalMs;
 
     /**
      * The supported task assignors keyed by their name.
@@ -754,33 +699,6 @@ public class GroupMetadataManager {
                     .setGroupId(groupId)
                     .setErrorCode(Errors.GROUP_ID_NOT_FOUND.code())
                     .setErrorMessage(exception.getMessage())
-                );
-            }
-        });
-
-        return describedGroups;
-    }
-
-    /**
-     * Handles a StreamsGroupDescribe request.
-     *
-     * @param groupIds          The IDs of the groups to describe.
-     * @param committedOffset   A specified committed offset corresponding to this shard.
-     *
-     * @return A list containing the StreamsGroupDescribeResponseData.DescribedGroup.
-     */
-    public List<StreamsGroupDescribeResponseData.DescribedGroup> streamsGroupDescribe(
-        List<String> groupIds,
-        long committedOffset
-    ) {
-        final List<StreamsGroupDescribeResponseData.DescribedGroup> describedGroups = new ArrayList<>();
-        groupIds.forEach(groupId -> {
-            try {
-                describedGroups.add(streamsGroup(groupId, committedOffset).asDescribedGroup(committedOffset));
-            } catch (GroupIdNotFoundException exception) {
-                describedGroups.add(new StreamsGroupDescribeResponseData.DescribedGroup()
-                    .setGroupId(groupId)
-                    .setErrorCode(Errors.GROUP_ID_NOT_FOUND.code())
                 );
             }
         });
