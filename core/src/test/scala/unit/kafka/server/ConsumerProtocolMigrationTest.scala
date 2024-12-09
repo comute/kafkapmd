@@ -532,7 +532,7 @@ class ConsumerProtocolMigrationTest(cluster: ClusterInstance) extends GroupCoord
     ).errorMessage
 
     assertEquals(
-      "Cannot upgrade the classic group grp to a consumer group because an unsupported custom assignor is in use. " +
+      "Cannot upgrade classic group grp to consumer group because an unsupported custom assignor is in use. " +
       "Please refer to the documentation or switch to a default assignor before re-attempting the upgrade.",
       errorMessage
     )
