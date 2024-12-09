@@ -1050,17 +1050,17 @@ public class GroupMetadataManager {
             );
         } catch (SchemaException e) {
             log.warn("Cannot upgrade the classic group " + classicGroup.groupId() +
-                " to consumer group because the embedded consumer protocol is malformed: "
+                " to a consumer group because the embedded consumer protocol is malformed: "
                 + e.getMessage() + ".", e);
 
             throw new GroupIdNotFoundException("Cannot upgrade the classic group " + classicGroup.groupId() +
-                " to consumer group because the embedded consumer protocol is malformed.");
+                " to a consumer group because the embedded consumer protocol is malformed.");
         } catch (UnsupportedVersionException e) {
             log.warn("Cannot upgrade the classic group " + classicGroup.groupId() +
-                " to consumer group: " + e.getMessage() + ".", e);
+                " to a consumer group: " + e.getMessage() + ".", e);
 
             throw new GroupIdNotFoundException("Cannot upgrade the classic group " + classicGroup.groupId() +
-                " to consumer group because an unsupported custom assignor is in use. " +
+                " to a consumer group because an unsupported custom assignor is in use. " +
                 "Please refer to the documentation or switch to a default assignor before re-attempting the upgrade.");
         }
         consumerGroup.createConsumerGroupRecords(records);
