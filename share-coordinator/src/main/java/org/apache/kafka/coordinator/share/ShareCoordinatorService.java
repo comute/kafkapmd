@@ -265,9 +265,9 @@ public class ShareCoordinatorService implements ShareCoordinator {
                 CompletableFuture.allOf(futures.toArray(new CompletableFuture[]{}))
                     .whenComplete((res, exp) -> {
                         if (exp != null) {
-                            log.error("Received error in share state topic prune, stopping job.", exp);
-                            return;
+                            log.error("Received error in share state topic prune.", exp);
                         }
+                        // Perpetual recursion, failure or not.
                         setupRecordPruning();
                     });
             }
