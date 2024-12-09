@@ -20,6 +20,7 @@ package org.apache.kafka.connect.runtime;
 import org.apache.kafka.connect.connector.Connector;
 import org.apache.kafka.connect.runtime.isolation.Plugins;
 import org.apache.kafka.connect.runtime.isolation.VersionedPluginLoadingException;
+
 import org.apache.maven.artifact.versioning.VersionRange;
 
 import java.util.Map;
