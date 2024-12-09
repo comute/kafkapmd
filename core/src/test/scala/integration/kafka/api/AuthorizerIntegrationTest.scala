@@ -1328,7 +1328,7 @@ class AuthorizerIntegrationTest extends AbstractAuthorizerIntegrationTest {
   }
 
   @ParameterizedTest(name = TestInfoUtils.TestWithParameterizedQuorumAndGroupProtocolNames)
-  @MethodSource(Array("getTestQuorumAndGroupProtocolParametersClassicGroupProtocolOnly_KAFKA_17696"))
+  @MethodSource(Array("getTestQuorumAndGroupProtocolParametersAll"))
   def testOffsetFetchWithNoAccess(quorum: String, groupProtocol: String): Unit = {
     val consumer = createConsumer()
     consumer.assign(List(tp).asJava)
@@ -1581,7 +1581,7 @@ class AuthorizerIntegrationTest extends AbstractAuthorizerIntegrationTest {
   }
 
   @ParameterizedTest(name = TestInfoUtils.TestWithParameterizedQuorumAndGroupProtocolNames)
-  @MethodSource(Array("getTestQuorumAndGroupProtocolParametersClassicGroupProtocolOnly_KAFKA_17696"))
+  @MethodSource(Array("getTestQuorumAndGroupProtocolParametersAll"))
   def testListOffsetsWithNoTopicAccess(quorum: String, groupProtocol: String): Unit = {
     val consumer = createConsumer()
     assertThrows(classOf[TopicAuthorizationException], () => consumer.endOffsets(Set(tp).asJava))
