@@ -26,6 +26,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.util.OptionalInt;
 import java.util.Set;
 
+import static org.apache.kafka.raft.ElectionState.UNKNOWN_LEADER_ID;
 import static org.apache.kafka.raft.KafkaRaftClientTest.randomReplicaId;
 import static org.apache.kafka.raft.KafkaRaftClientTest.replicaKey;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -63,7 +64,8 @@ public class KafkaRaftClientPreVoteTest {
         context.pollUntilResponse();
 
         boolean voteGranted = !hasFetchedFromLeader;
-        context.assertSentPreVoteResponse(Errors.NONE, epoch, OptionalInt.of(electedLeaderId), voteGranted);
+        int leaderId = voteGranted ? UNKNOWN_LEADER_ID : electedLeaderId;
+        context.assertSentPreVoteResponse(Errors.NONE, epoch, OptionalInt.of(leaderId), voteGranted);
         context.assertElectedLeader(epoch, electedLeaderId);
 
         // follower will transition to unattached if pre-vote request has a higher epoch
@@ -91,7 +93,8 @@ public class KafkaRaftClientPreVoteTest {
         context.deliverRequest(context.preVoteRequest(epoch, otherNodeKey, epoch, 1));
         context.pollUntilResponse();
 
-        context.assertSentPreVoteResponse(Errors.NONE, epoch, OptionalInt.empty(), false);
+        // follower can grant pre-votes if it has not fetched successfully from leader yet
+        context.assertSentPreVoteResponse(Errors.NONE, epoch, OptionalInt.empty(), true);
         context.assertVotedCandidate(epoch, votedCandidateKey.id());
     }
 
@@ -109,11 +112,11 @@ public class KafkaRaftClientPreVoteTest {
 
         context.pollUntilRequest();
 
-        // candidate should reject pre-vote requests with the same epoch
+        // candidate should grant pre-vote requests with the same epoch if log is up-to-date
         context.deliverRequest(context.preVoteRequest(leaderEpoch, otherNodeKey, leaderEpoch, 1));
         context.pollUntilResponse();
 
-        context.assertSentPreVoteResponse(Errors.NONE, leaderEpoch, OptionalInt.empty(), false);
+        context.assertSentPreVoteResponse(Errors.NONE, leaderEpoch, OptionalInt.empty(), true);
         context.assertVotedCandidate(leaderEpoch, localId);
 
         // candidate will transition to unattached if pre-vote request has a higher epoch
@@ -190,7 +193,8 @@ public class KafkaRaftClientPreVoteTest {
         context.pollUntilResponse();
 
         boolean voteGranted = !hasFetchedFromLeader;
-        context.assertSentPreVoteResponse(Errors.NONE, epoch, OptionalInt.of(leader.id()), voteGranted);
+        int expectedLeaderId = voteGranted ? UNKNOWN_LEADER_ID : leaderId;
+        context.assertSentPreVoteResponse(Errors.NONE, epoch, OptionalInt.of(expectedLeaderId), voteGranted);
         assertTrue(context.client.quorum().isFollower());
     }
 

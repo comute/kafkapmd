@@ -229,9 +229,8 @@ public class FollowerState implements EpochState {
             log.debug(
                 "Rejecting PreVote request from replica ({}) since replica epoch/offset is not up to date with us",
                 replicaKey);
-            return true;
         }
-        return false;
+        return isLogUpToDate;
     }
 
     @Override
