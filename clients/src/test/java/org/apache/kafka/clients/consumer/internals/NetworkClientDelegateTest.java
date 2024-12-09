@@ -217,6 +217,7 @@ public class NetworkClientDelegateTest {
         assertTrue(networkClientDelegate.getAndClearMetadataError().isEmpty());
         networkClientDelegate.poll(0, time.milliseconds());
         
+        assertTrue(networkClientDelegate.getAndClearMetadataError().isPresent());
         networkClientDelegate.getAndClearMetadataError().ifPresent(
                 error -> {
                     assertInstanceOf(AuthenticationException.class, error);
