@@ -86,6 +86,7 @@ import org.apache.kafka.common.errors.InvalidGroupIdException;
 import org.apache.kafka.common.errors.InvalidTopicException;
 import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.errors.TopicAuthorizationException;
+import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.internals.ClusterResourceListeners;
 import org.apache.kafka.common.metrics.KafkaMetric;
 import org.apache.kafka.common.metrics.Metrics;
@@ -2051,23 +2052,27 @@ public class AsyncKafkaConsumer<K, V> implements ConsumerDelegate<K, V> {
                                                                                     ConsumerRebalanceListenerMethodName methodName,
                                                                                     SortedSet<TopicPartition> partitions,
                                                                                     CompletableFuture<Void> future) {
-        final Exception e;
+        Exception e;
 
-        switch (methodName) {
-            case ON_PARTITIONS_REVOKED:
-                e = rebalanceListenerInvoker.invokePartitionsRevoked(partitions);
-                break;
+        try {
+            switch (methodName) {
+                case ON_PARTITIONS_REVOKED:
+                    e = rebalanceListenerInvoker.invokePartitionsRevoked(partitions);
+                    break;
 
-            case ON_PARTITIONS_ASSIGNED:
-                e = rebalanceListenerInvoker.invokePartitionsAssigned(partitions);
-                break;
+                case ON_PARTITIONS_ASSIGNED:
+                    e = rebalanceListenerInvoker.invokePartitionsAssigned(partitions);
+                    break;
 
-            case ON_PARTITIONS_LOST:
-                e = rebalanceListenerInvoker.invokePartitionsLost(partitions);
-                break;
+                case ON_PARTITIONS_LOST:
+                    e = rebalanceListenerInvoker.invokePartitionsLost(partitions);
+                    break;
 
-            default:
-                throw new IllegalArgumentException("The method " + methodName.fullyQualifiedMethodName() + " to invoke was not expected");
+                default:
+                    throw new IllegalArgumentException("The method " + methodName.fullyQualifiedMethodName() + " to invoke was not expected");
+            }
+        } catch (WakeupException | InterruptException ex) {
+            e = ex;
         }
 
         final Optional<KafkaException> error;
