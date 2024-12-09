@@ -132,6 +132,10 @@ public class MirrorCheckpointConnector extends SourceConnector {
     // divide consumer groups among tasks
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
+        if (!config.enabled()) {
+            return Collections.emptyList();
+        }
+
         if (knownConsumerGroups == null) {
             // If knownConsumerGroup is null, it means the initial loading has not finished.
             // An exception should be thrown to trigger the retry behavior in the framework.
@@ -139,13 +143,12 @@ public class MirrorCheckpointConnector extends SourceConnector {
             throw new RetriableException("Timeout while loading consumer groups.");
         }
 
-        // if the replication is disabled, known consumer group is empty, or checkpoint emission is
-        // disabled by setting 'emit.checkpoints.enabled' to false, the interval of checkpoint emission
-        // will be negative and no 'MirrorCheckpointTask' will be created
-        if (!config.enabled() || knownConsumerGroups.isEmpty()
-                || config.emitCheckpointsInterval().isNegative()) {
+        // if known consumer group is empty, or checkpoint emission is disabled by setting 'emit.checkpoints.enabled' to false,
+        // the interval of checkpoint emission will be negative and no 'MirrorCheckpointTask' will be created
+        if (knownConsumerGroups.isEmpty() || config.emitCheckpointsInterval().isNegative()) {
             return Collections.emptyList();
         }
+
         int numTasks = Math.min(maxTasks, knownConsumerGroups.size());
         List<List<String>> groupsPartitioned = ConnectorUtils.groupPartitions(new ArrayList<>(knownConsumerGroups), numTasks);
         return IntStream.range(0, numTasks)
