@@ -188,6 +188,19 @@ public class RaftClusterInvocationContext implements TestTemplateInvocationConte
 
         @Override
         public void stop() {
+//            ThreadMXBean bean = ManagementFactory.getThreadMXBean();
+//            long[] threadIds = bean.findDeadlockedThreads(); // Returns null if no threads are deadlocked.
+//
+//            if (threadIds != null) {
+//                ThreadInfo[] infos = bean.getThreadInfo(threadIds);
+//
+////            for (ThreadInfo info : infos) {
+////                StackTraceElement[] stack = info.getStackTrace();
+////                // Log or store stack trace information.
+////            }
+//                assertFalse(Arrays.stream(infos).findAny().isPresent(), "deadlock detected: " + infos);
+//            }
+
             if (stopped.compareAndSet(false, true)) {
                 Utils.closeQuietly(clusterTestKit, "cluster");
             }
