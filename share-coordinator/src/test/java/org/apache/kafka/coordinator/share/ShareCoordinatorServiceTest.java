@@ -839,15 +839,15 @@ class ShareCoordinatorServiceTest {
                 any(),
                 any());
 
-        timer.advanceClock(30005L); // prune should be called
-        verify(runtime, times(4))   // second prune with 2 topic partitions
+        timer.advanceClock(30005L); // prune should not be called as future completes exceptionally.
+        verify(runtime, times(2))   // second prune with 2 topic partitions
             .scheduleWriteOperation(
                 eq("write-state-record-prune"),
                 any(),
                 any(),
                 any());
 
-        verify(writer, times(4))
+        verify(writer, times(2))
             .deleteRecords(any(), anyLong());
         service.shutdown();
     }

@@ -256,19 +256,19 @@ class CoordinatorPartitionWriterTest {
       ArgumentMatchers.any(),
       callbackCapture.capture(),
       ArgumentMatchers.eq(true)
-    )).thenAnswer(_ => {
+    )).thenAnswer { _ =>
       callbackCapture.getValue.apply(Map(
         new TopicPartition("random-topic", 0) -> new DeleteRecordsPartitionResult()
-          .setErrorCode(Errors.NOT_LEADER_OR_FOLLOWER.code())
-      ))
-    })
+          .setErrorCode(Errors.NOT_LEADER_OR_FOLLOWER.code
+          )))
+    }
 
     partitionRecordWriter.deleteRecords(
       new TopicPartition("random-topic", 0),
       10L
-    ).whenComplete((_, exp) => {
-      assertEquals(Errors.NOT_LEADER_OR_FOLLOWER.exception(), exp)
-    })
+    ).whenComplete { (_, exp) =>
+      assertEquals(Errors.NOT_LEADER_OR_FOLLOWER.exception, exp)
+    }
 
     // Response does not contain topic queried.
     when(replicaManager.deleteRecords(
@@ -276,19 +276,19 @@ class CoordinatorPartitionWriterTest {
       ArgumentMatchers.any(),
       callbackCapture.capture(),
       ArgumentMatchers.eq(true)
-    )).thenAnswer(_ => {
+    )).thenAnswer { _ =>
       callbackCapture.getValue.apply(Map(
         new TopicPartition("other-random-topic", 0) -> new DeleteRecordsPartitionResult()
-          .setErrorCode(Errors.NOT_LEADER_OR_FOLLOWER.code())
+          .setErrorCode(Errors.NOT_LEADER_OR_FOLLOWER.code)
       ))
-    })
+    }
 
     partitionRecordWriter.deleteRecords(
       new TopicPartition("random-topic", 0),
       10L
-    ).whenComplete((_, exp) => {
+    ).whenComplete { (_, exp) =>
       assertTrue(exp.isInstanceOf[IllegalStateException])
-    })
+    }
   }
 
   @Test
@@ -307,18 +307,18 @@ class CoordinatorPartitionWriterTest {
       ArgumentMatchers.any(),
       callbackCapture.capture(),
       ArgumentMatchers.eq(true)
-    )).thenAnswer(_ => {
+    )).thenAnswer { _ =>
       callbackCapture.getValue.apply(Map(
         new TopicPartition("random-topic", 0) -> new DeleteRecordsPartitionResult()
-          .setErrorCode(Errors.NONE.code())
+          .setErrorCode(Errors.NONE.code)
       ))
-    })
+    }
 
     partitionRecordWriter.deleteRecords(
       new TopicPartition("random-topic", 0),
       10L
-    ).whenComplete((_, exp) => {
+    ).whenComplete { (_, exp) =>
       assertNull(exp)
-    })
+    }
   }
 }

@@ -176,8 +176,8 @@ class CoordinatorPartitionWriter(
         val result = results.get(tp)
         if (result.isEmpty) {
           responseFuture.completeExceptionally(new IllegalStateException(s"Delete status $result should have partition $tp."))
-        } else if (result.get.errorCode() != Errors.NONE.code()) {
-          responseFuture.completeExceptionally(Errors.forCode(result.get.errorCode()).exception())
+        } else if (result.get.errorCode != Errors.NONE.code) {
+          responseFuture.completeExceptionally(Errors.forCode(result.get.errorCode).exception)
         } else {
           responseFuture.complete(null)
         }

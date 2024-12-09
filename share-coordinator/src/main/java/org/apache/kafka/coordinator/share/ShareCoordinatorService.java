@@ -255,18 +255,19 @@ public class ShareCoordinatorService implements ShareCoordinator {
 
     // visibility for tests
     void setupRecordPruning() {
+        log.info("Scheduling share state topic prune job.");
         timer.add(new TimerTask(config.shareCoordinatorTopicPruneIntervalMs()) {
             @Override
             public void run() {
                 List<CompletableFuture<Void>> futures = new ArrayList<>();
-                runtime.activeTopicPartitions().forEach(tp -> {
-                    futures.add(performRecordPruning(tp));
-                });
+                runtime.activeTopicPartitions().forEach(tp -> futures.add(performRecordPruning(tp)));
 
-                // None of the futures will complete exceptionally.
                 CompletableFuture.allOf(futures.toArray(new CompletableFuture[]{}))
-                    .thenRun(() -> {
-                        // perpetual recursion
+                    .whenComplete((res, exp) -> {
+                        if (exp != null) {
+                            log.error("Received error in share state topic prune, stopping job.", exp);
+                            return;
+                        }
                         setupRecordPruning();
                     });
             }
@@ -290,15 +291,20 @@ public class ShareCoordinatorService implements ShareCoordinator {
                 // or shard re-election. Will cause unnecessary noise, hence not logging
                 if (!(error.equals(Errors.COORDINATOR_LOAD_IN_PROGRESS) || error.equals(Errors.NOT_COORDINATOR))) {
                     log.error("Last redundant offset lookup for tp {} threw an error.", tp, exception);
+                    // Should not reschedule -> unknown exception.
+                    fut.completeExceptionally(exception);
+                    return;
                 }
+                // Should reschedule -> could be transient.
                 fut.complete(null);
                 return;
             }
             if (result.isPresent()) {
                 Long off = result.get();
-                // guard and optimization
+                // Guard and optimization.
                 if (off == Long.MAX_VALUE || off <= 0) {
                     log.warn("Last redundant offset value {} not suitable to make delete call for {}.", off, tp);
+                    // Should reschedule -> next lookup could yield valid value.
                     fut.complete(null);
                     return;
                 }
@@ -307,12 +313,17 @@ public class ShareCoordinatorService implements ShareCoordinator {
                 writer.deleteRecords(tp, off)
                     .whenComplete((res, exp) -> {
                         if (exp != null) {
+                            // Should not reschedule -> problems while deleting.
                             log.debug("Exception while deleting records in {} till offset {}.", tp, off, exp);
+                            fut.completeExceptionally(exp);
+                            return;
                         }
+                        // Should reschedule -> successful delete
                         fut.complete(null);
                     });
             } else {
                 log.debug("No offset value for tp {} found.", tp);
+                // Should reschedule -> next lookup could yield valid value.
                 fut.complete(null);
             }
         });

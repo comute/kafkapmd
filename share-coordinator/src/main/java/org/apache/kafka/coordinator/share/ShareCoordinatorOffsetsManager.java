@@ -20,6 +20,7 @@ package org.apache.kafka.coordinator.share;
 import org.apache.kafka.server.share.SharePartitionKey;
 import org.apache.kafka.timeline.SnapshotRegistry;
 import org.apache.kafka.timeline.TimelineHashMap;
+import org.apache.kafka.timeline.TimelineLong;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -35,24 +36,23 @@ public class ShareCoordinatorOffsetsManager {
 
     // Map to store share partition key => current partition offset
     // being written.
-    private static final String MIN_OFFSET = "min-offset";
-    private static final String REDUNDANT_OFFSET = "redundant-offset";
     private final TimelineHashMap<SharePartitionKey, Long> offsets;
 
     // Minimum offset representing the smallest necessary offset (non-redundant)
     // across the internal partition.
-    // We are using timeline maps here because the offsets which are passed into
+    // We are using timeline object here because the offsets which are passed into
     // updateState might not be committed yet. In case of retry, these offsets would
     // be invalidated via the snapshot registry. Hence, using timeline hashmaps
     // the values would automatically revert in accordance with the last committed offset.
-    private final TimelineHashMap<String, Long> minOffset;
-    private final TimelineHashMap<String, Long> redundantOffset;
+    private final TimelineLong minOffset;
+    private final TimelineLong redundantOffset;
 
     public ShareCoordinatorOffsetsManager(SnapshotRegistry snapshotRegistry) {
         Objects.requireNonNull(snapshotRegistry);
         offsets = new TimelineHashMap<>(snapshotRegistry, 0);
-        minOffset = new TimelineHashMap<>(snapshotRegistry, 0);
-        redundantOffset = new TimelineHashMap<>(snapshotRegistry, 0);
+        minOffset = new TimelineLong(snapshotRegistry);
+        minOffset.set(Long.MAX_VALUE);  // For easy min update.
+        redundantOffset = new TimelineLong(snapshotRegistry);
     }
 
     /**
@@ -68,13 +68,13 @@ public class ShareCoordinatorOffsetsManager {
      * @param offset - represents the latest partition offset for provided key
      */
     public void updateState(SharePartitionKey key, long offset) {
-        minOffset.compute(MIN_OFFSET, (k, v) -> v == null ? offset : Math.min(v, offset));
+        minOffset.set(Math.min(minOffset.get(), offset));
         offsets.put(key, offset);
 
         Optional<Long> deleteTillOffset = findRedundantOffset();
         deleteTillOffset.ifPresent(off -> {
-            minOffset.put(MIN_OFFSET, off);
-            redundantOffset.put(REDUNDANT_OFFSET, off);
+            minOffset.set(off);
+            redundantOffset.set(off);
         });
     }
 
@@ -102,7 +102,7 @@ public class ShareCoordinatorOffsetsManager {
             // We can see in above that offsets 2, 4, 3, 5 are redundant,
             // but we do not have a contiguous prefix starting at minOffset
             // and we cannot proceed.
-            if (soFar == minOffset.get(MIN_OFFSET)) {
+            if (soFar == minOffset.get()) {
                 return Optional.empty();
             }
         }
@@ -116,8 +116,8 @@ public class ShareCoordinatorOffsetsManager {
      * @return Optional of type Long representing the offset or empty for invalid offset values
      */
     public Optional<Long> lastRedundantOffset() {
-        Long value = redundantOffset.get(REDUNDANT_OFFSET);
-        if (value == null || value <= 0 || value == Long.MAX_VALUE) {
+        long value = redundantOffset.get();
+        if (value <= 0 || value == Long.MAX_VALUE) {
             return Optional.empty();
         }
         // We don't want to send the same value repeatedly
@@ -125,7 +125,7 @@ public class ShareCoordinatorOffsetsManager {
         // reducing efficiency hence, once valid redundant value is
         // returned lets set it to 0 so next time onwards
         // empty Optional is returned.
-        redundantOffset.put(REDUNDANT_OFFSET, 0L);
+        redundantOffset.set(0L);
         return Optional.of(value);
     }
 

@@ -6680,7 +6680,7 @@ class ReplicaManagerTest {
     rm.createPartition(tp)
 
     def callback(responseStatus: Map[TopicPartition, DeleteRecordsResponseData.DeleteRecordsPartitionResult]): Unit = {
-      assert(responseStatus.values.head.errorCode() == Errors.INVALID_TOPIC_EXCEPTION.code())
+      assert(responseStatus.values.head.errorCode == Errors.INVALID_TOPIC_EXCEPTION.code)
     }
 
     // default internal topics delete disabled
@@ -6729,7 +6729,7 @@ class ReplicaManagerTest {
       Set(new Node(0, "host1", 0)).asJava).build(), (_, _) => ())
 
     def callback(responseStatus: Map[TopicPartition, DeleteRecordsResponseData.DeleteRecordsPartitionResult]): Unit = {
-      assert(responseStatus.values.head.errorCode() == Errors.NONE.code())
+      assert(responseStatus.values.head.errorCode == Errors.NONE.code)
     }
 
     // internal topics delete allowed
