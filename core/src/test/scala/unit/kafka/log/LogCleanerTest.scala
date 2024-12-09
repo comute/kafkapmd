@@ -1919,7 +1919,9 @@ class LogCleanerTest extends Logging {
 
   @Test
   def testCleanTombstone(): Unit = {
-    val logConfig = new LogConfig(new Properties())
+    val properties = new Properties()
+    properties.put(TopicConfig.MESSAGE_TIMESTAMP_AFTER_MAX_MS_CONFIG, Long.MaxValue.toString)
+    val logConfig = new LogConfig(properties)
 
     val log = makeLog(config = logConfig)
     val cleaner = makeCleaner(10)
