@@ -10187,8 +10187,8 @@ public class GroupMetadataManagerTest {
         } else {
             Exception ex = assertThrows(GroupIdNotFoundException.class, () -> context.consumerGroupHeartbeat(consumerGroupHeartbeatRequestData));
             assertEquals(
-                "Cannot upgrade the classic group group-id to consumer group because a custom assignor with userData is in use. " +
-                "Switch to a default assignor before re-attempting the upgrade.", ex.getMessage());
+                "Cannot upgrade the classic group group-id to consumer group because an unsupported custom assignor is in use. " +
+                "Please refer to the documentation or switch to a default assignor before re-attempting the upgrade.", ex.getMessage());
         }
     }
 
