@@ -292,7 +292,6 @@ println("Starting build with version $version (commit id ${commitId == null ? "n
 println("Build properties: ignoreFailures=$userIgnoreFailures, maxParallelForks=$maxTestForks, maxScalacThreads=$maxScalacThreads, maxTestRetries=$userMaxTestRetries")
 
 subprojects {
-  
 
   // enable running :dependencies task recursively on all subprojects
   // eg: ./gradlew allDeps
